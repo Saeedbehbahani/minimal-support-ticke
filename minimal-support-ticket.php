@@ -16,10 +16,17 @@ define('MST_URL', plugin_dir_url(__FILE__));
 
 final class MST_Plugin {
 
+    /** @var MST_Plugin|null */
     private static $instance = null;
 
+    /**
+     * Singleton instance
+     * @return MST_Plugin
+     */
     public static function instance() {
-        if (self::$instance === null) self::$instance = new self();
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
         return self::$instance;
     }
 
@@ -31,17 +38,25 @@ final class MST_Plugin {
         add_action('plugins_loaded', [$this, 'boot']);
     }
 
+    /**
+     * Load required files
+     */
     private function includes() {
         // Core
         $this->safe_require('includes/core/helpers.php');
         $this->safe_require('includes/core/db.php');
         $this->safe_require('includes/core/capabilities.php');
         $this->safe_require('includes/core/attachments.php');
+
+        // ✅ IMPORTANT: load SMS classes BEFORE notifications-sms.php
+        $this->safe_require('includes/core/sms-adapter-pattern.php');
+        $this->safe_require('includes/core/sms-provider.php');
         $this->safe_require('includes/core/notifications-sms.php');
+
         $this->safe_require('includes/core/frontend-shortcodes.php');
         $this->safe_require('includes/core/frontend-handlers.php');
 
-        // Admin
+        // Admin (only in wp-admin)
         if (is_admin()) {
             $this->safe_require('includes/admin/menu.php');
             $this->safe_require('includes/admin/tickets-list.php');
@@ -51,11 +66,21 @@ final class MST_Plugin {
         }
     }
 
+    /**
+     * Safe require_once by relative path
+     * @param string $rel
+     * @return void
+     */
     private function safe_require($rel) {
-        $path = MST_PATH . ltrim($rel, '/');
-        if (file_exists($path)) require_once $path;
+        $path = MST_PATH . ltrim((string)$rel, '/');
+        if (file_exists($path)) {
+            require_once $path;
+        }
     }
 
+    /**
+     * Activation hook
+     */
     public static function activate() {
         // Capabilities
         if (function_exists('mst_add_caps')) {
@@ -78,6 +103,9 @@ final class MST_Plugin {
         }
     }
 
+    /**
+     * Boot plugin hooks
+     */
     public function boot() {
         // Enqueue assets
         add_action('wp_enqueue_scripts', [$this, 'enqueue_front']);
@@ -99,7 +127,8 @@ final class MST_Plugin {
         // Keep DB migrated on version changes (safe)
         add_action('admin_init', function () {
             $stored = get_option('mst_db_version');
-            if (!$stored || version_compare($stored, MST_VERSION, '<')) {
+
+            if (!$stored || version_compare((string)$stored, MST_VERSION, '<')) {
                 if (class_exists('MST_DB') && method_exists('MST_DB', 'install')) {
                     MST_DB::install();
                 }
@@ -108,6 +137,9 @@ final class MST_Plugin {
         });
     }
 
+    /**
+     * Front assets (only when shortcodes exist on current page)
+     */
     public function enqueue_front() {
         // فقط وقتی شورتکدهای تیکت روی صفحه هست، CSS/JS لود بشه
         if (!function_exists('mst_page_has_shortcodes') || !mst_page_has_shortcodes(['mst_ticket_form','mst_ticket_list','mst_ticket_view','mst_support'])) {
@@ -120,6 +152,10 @@ final class MST_Plugin {
         // wp_enqueue_script('mst-frontend', MST_URL . 'assets/js/frontend.js', ['jquery'], MST_VERSION, true);
     }
 
+    /**
+     * Admin assets (only on plugin pages)
+     * @param string $hook
+     */
     public function enqueue_admin($hook) {
         // فقط صفحات خود افزونه
         if (strpos((string)$hook, 'mst_') === false) return;
