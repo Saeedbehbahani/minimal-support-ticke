@@ -1,0 +1,12 @@
+.mst-badge {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    background: #111;
+    color: #fff;
+}
+
+.mst-open { background:#111; }
+.mst-answered { background:#2e7d32; }
+.mst-in_review { background:#f57c00; }
+.mst-closed { background:#c62828; }
