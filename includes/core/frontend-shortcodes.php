@@ -20,20 +20,31 @@ function mst_register_shortcodes(): void {
 }
 
 /**
+ * Shared front wrapper
+ */
+function mst_sc_wrap_page(string $variant, string $content): string {
+    $variant = sanitize_html_class($variant);
+
+    return '<mst-app class="mst-app"><mst-shell class="mst-shell"><mst-page class="mst-page mst-page--' . esc_attr($variant) . '">' . $content . '</mst-page></mst-shell></mst-app>';
+}
+
+/**
  * TICKET FORM
  */
 function mst_sc_ticket_form(): string {
 
     if (!is_user_logged_in()) {
-        return '<div class="mst-alert">برای ارسال تیکت باید وارد حساب کاربری شوید.</div>';
+        return mst_sc_wrap_page('form', '<div class="mst-alert">برای ارسال تیکت باید وارد حساب کاربری شوید.</div>');
     }
 
     ob_start(); ?>
 
-    <div class="mst-box">
-        <h3 class="mst-title">ثبت تیکت جدید</h3>
+    <section class="mst-card mst-card--surface mst-ticket-form">
+        <header class="mst-card__header">
+            <h3 class="mst-title">ثبت تیکت جدید</h3>
+        </header>
 
-        <form method="post"
+        <form class="mst-form" method="post"
               action="<?php echo esc_url(admin_url('admin-post.php')); ?>"
               enctype="multipart/form-data">
 
@@ -47,14 +58,14 @@ function mst_sc_ticket_form(): string {
             <textarea name="message" class="mst-textarea" required rows="5"></textarea>
 
             <label class="mst-label">ضمیمه (اختیاری - حداکثر ۳ فایل)</label>
-            <input type="file" name="attachments[]" multiple>
+            <input class="mst-input-file" type="file" name="attachments[]" multiple>
 
-            <button type="submit" class="mst-btn">ارسال تیکت</button>
+            <button type="submit" class="mst-btn mst-btn--primary">ارسال تیکت</button>
         </form>
-    </div>
+    </section>
 
     <?php
-    return ob_get_clean();
+    return mst_sc_wrap_page('form', ob_get_clean());
 }
 
 /**
@@ -77,37 +88,27 @@ function mst_sc_ticket_chat($atts = []): string {
 
     $ticket_id = absint(mst_req('ticket_id'));
 
-    if (!$ticket_id) {
-        return '
-        <div class="mst-app">
-          <div class="mst-shell">
-            <div class="mst-topbar">
-              <a class="mst-back" href="'.esc_url($back_url).'">← بازگشت به تیکت‌ها</a>
-              <div class="mst-topbar-title">'.esc_html($atts['title']).'</div>
-            </div>
-            <div class="mst-box">
-              <div class="mst-alert">تیکتی انتخاب نشده.</div>
-            </div>
-          </div>
-        </div>';
-    }
+    ob_start(); ?>
 
-    $chat = '<div class="mst-ticket-view">' . mst_sc_ticket_view() . '</div>';
+    <header class="mst-chat-topbar">
+        <a class="mst-btn mst-btn--ghost mst-chat-topbar__back" href="<?php echo esc_url($back_url); ?>">← بازگشت به تیکت‌ها</a>
+        <div class="mst-chat-topbar__title"><?php echo esc_html($atts['title']); ?></div>
+    </header>
 
-    return '
-    <div class="mst-app">
-      <div class="mst-shell">
-        <div class="mst-topbar">
-          <a class="mst-back" href="'.esc_url($back_url).'">← بازگشت به تیکت‌ها</a>
-          <div class="mst-topbar-title">'.esc_html($atts['title']).'</div>
-        </div>
-        '.$chat.'
-      </div>
-    </div>';
+    <?php if (!$ticket_id): ?>
+        <section class="mst-card mst-card--surface">
+            <div class="mst-alert">تیکتی انتخاب نشده.</div>
+        </section>
+    <?php else: ?>
+        <div class="mst-chat-view"><?php echo mst_sc_ticket_view(false); ?></div>
+    <?php endif; ?>
+
+    <?php
+    return mst_sc_wrap_page('chat', ob_get_clean());
 }
 
 /**
- * TICKET LIST (User only) — SaaS Cards
+ * TICKET LIST (User only)
  */
 function mst_sc_ticket_list(): string {
 
@@ -128,66 +129,69 @@ function mst_sc_ticket_list(): string {
         ARRAY_A
     );
 
-    // ✅ Chat page (by slug). If not found => fallback to page_id=25 (adjust if needed)
+    // Chat page (by slug). If not found => fallback to page_id=25 (adjust if needed)
     $chat_page = get_page_by_path('ticket-chat');
     if ($chat_page) {
         $chat_url = get_permalink($chat_page->ID);
     } else {
-        // fallback: if your ticket-chat is actually page_id=25, this works with your current structure
         $chat_url = home_url('/?page_id=25');
     }
 
     ob_start(); ?>
 
-    <div class="mst-box">
-        <h3 class="mst-title">تیکت‌های من</h3>
+    <section class="mst-card mst-card--surface mst-ticket-list-page">
+        <header class="mst-card__header">
+            <h3 class="mst-title">تیکت‌های من</h3>
+        </header>
 
         <?php if (empty($tickets)): ?>
             <div class="mst-empty">هنوز تیکتی ثبت نکردی.</div>
         <?php else: ?>
-
-            <div class="mst-cards">
+            <div class="mst-ticket-list" role="list">
                 <?php foreach ($tickets as $t): ?>
-                    <?php $ticket_url = add_query_arg('ticket_id', (int)$t['id'], $chat_url); ?>
-
-                    <div class="mst-card">
-                        <div class="mst-card-top">
-                            <div class="mst-card-id">#<?php echo esc_html($t['id']); ?></div>
-
-                            <span class="mst-badge mst-<?php echo esc_attr($t['status']); ?>">
-                                <?php echo esc_html(mst_status_label($t['status'])); ?>
+                    <?php
+                    $status = sanitize_key((string) ($t['status'] ?? 'open'));
+                    $ticket_url = add_query_arg('ticket_id', (int) $t['id'], $chat_url);
+                    ?>
+                    <article class="mst-ticket-item" role="listitem">
+                        <div class="mst-ticket-item__head">
+                            <span class="mst-ticket-item__id">#<?php echo esc_html($t['id']); ?></span>
+                            <span class="mst-badge mst-badge--<?php echo esc_attr($status); ?>">
+                                <?php echo esc_html(mst_status_label($status)); ?>
                             </span>
                         </div>
 
-                        <div class="mst-card-title">
-                            <?php echo esc_html($t['subject']); ?>
-                        </div>
+                        <h4 class="mst-ticket-item__title"><?php echo esc_html($t['subject']); ?></h4>
 
-                        <div class="mst-card-meta">
-                            آخرین بروزرسانی: <?php echo esc_html($t['updated_at']); ?>
-                        </div>
+                        <p class="mst-ticket-item__meta">آخرین بروزرسانی: <?php echo esc_html($t['updated_at']); ?></p>
 
-                        <div class="mst-card-actions">
-                            <a class="mst-btn mst-btn-sm" href="<?php echo esc_url($ticket_url); ?>">
-                                مشاهده گفتگو
-                            </a>
+                        <div class="mst-ticket-item__actions">
+                            <a class="mst-btn mst-btn--secondary mst-btn--sm" href="<?php echo esc_url($ticket_url); ?>">مشاهده گفتگو</a>
                         </div>
-                    </div>
-
+                    </article>
                 <?php endforeach; ?>
             </div>
-
         <?php endif; ?>
-    </div>
+    </section>
 
     <?php
-    return ob_get_clean();
+    return mst_sc_wrap_page('list', ob_get_clean());
 }
 
 /**
  * TICKET VIEW (Conversation)
+ *
+ * Important:
+ * - As shortcode callback, WP passes ($atts, $content)
+ * - We also call mst_sc_ticket_view(false) from chat wrapper to avoid double wrapper
  */
 function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
+
+    // If called like mst_sc_ticket_view(false)
+    if (is_bool($atts)) {
+        $with_wrapper = $atts;
+        $atts = [];
+    }
 
     if (!is_user_logged_in()) return '';
 
@@ -196,43 +200,46 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
 
     $ticket = MST_DB::get_ticket_for_user($ticket_id, mst_user_id());
     if (!$ticket) {
-        return '<div class="mst-alert">دسترسی به این تیکت مجاز نیست.</div>';
+        $content = '<div class="mst-alert">دسترسی به این تیکت مجاز نیست.</div>';
+        return $with_wrapper ? mst_sc_wrap_page('view', $content) : $content;
     }
 
     $messages  = MST_DB::get_messages($ticket_id);
-    $is_closed = ($ticket['status'] === 'closed');
+    $is_closed = ((string)($ticket['status'] ?? '') === 'closed');
+    $status    = sanitize_key((string) ($ticket['status'] ?? 'open'));
 
     ob_start(); ?>
 
-    <div class="mst-box">
+    <section class="mst-card mst-card--surface mst-chat">
 
-        <div class="mst-ticket-head">
-            <div>
+        <header class="mst-chat-head">
+            <div class="mst-chat-head__subject">
                 <strong>#<?php echo esc_html($ticket_id); ?></strong>
                 <?php echo esc_html($ticket['subject']); ?>
             </div>
 
             <div>
-                <span class="mst-badge mst-<?php echo esc_attr($ticket['status']); ?>">
-                    <?php echo esc_html(mst_status_label($ticket['status'])); ?>
+                <span class="mst-badge mst-badge--<?php echo esc_attr($status); ?>">
+                    <?php echo esc_html(mst_status_label($status)); ?>
                 </span>
             </div>
-        </div>
+        </header>
 
-        <div class="mst-thread">
+        <div class="mst-thread" aria-live="polite">
             <?php foreach ($messages as $msg): ?>
-                <div class="mst-msg <?php echo esc_attr($msg['sender_role']); ?>">
-                    <div class="mst-msg-meta">
-                        <?php echo ($msg['sender_role'] === 'admin') ? 'پشتیبانی' : 'شما'; ?>
+                <?php $role = sanitize_key((string) ($msg['sender_role'] ?? 'user')); ?>
+                <article class="mst-message mst-message--<?php echo esc_attr($role); ?>">
+                    <div class="mst-message__meta">
+                        <?php echo ($role === 'admin') ? 'پشتیبانی' : 'شما'; ?>
                         |
                         <?php echo esc_html($msg['created_at']); ?>
                     </div>
 
-                    <div class="mst-msg-body">
+                    <div class="mst-message__body">
                         <?php echo nl2br(esc_html($msg['message'])); ?>
                         <?php echo mst_render_attachments($msg['attachments'] ?? null); ?>
                     </div>
-                </div>
+                </article>
             <?php endforeach; ?>
         </div>
 
@@ -243,15 +250,15 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
                 <input type="hidden" name="ticket_id" value="<?php echo esc_attr($ticket_id); ?>">
                 <input type="hidden" name="next_status" value="<?php echo esc_attr($is_closed ? 'open' : 'closed'); ?>">
 
-                <button type="submit" class="mst-btn mst-btn-secondary">
+                <button type="submit" class="mst-btn mst-btn--secondary">
                     <?php echo $is_closed ? 'باز کردن مجدد' : 'بستن تیکت'; ?>
                 </button>
             </form>
         </div>
 
         <?php if (!$is_closed): ?>
-            <div class="mst-reply">
-                <form method="post"
+            <div class="mst-composer">
+                <form class="mst-form" method="post"
                       action="<?php echo esc_url(admin_url('admin-post.php')); ?>"
                       enctype="multipart/form-data">
 
@@ -263,16 +270,16 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
                     <textarea name="message" class="mst-textarea" required rows="4"></textarea>
 
                     <label class="mst-label">ضمیمه</label>
-                    <input type="file" name="attachments[]" multiple>
+                    <input class="mst-input-file" type="file" name="attachments[]" multiple>
 
-                    <button type="submit" class="mst-btn">ارسال پاسخ</button>
+                    <button type="submit" class="mst-btn mst-btn--primary">ارسال پاسخ</button>
                 </form>
             </div>
         <?php endif; ?>
 
-    </div>
+    </section>
 
     <?php
-    return ob_get_clean();
+    $content = ob_get_clean();
+    return $with_wrapper ? mst_sc_wrap_page('view', $content) : $content;
 }
-
