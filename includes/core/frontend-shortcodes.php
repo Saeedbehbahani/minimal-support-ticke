@@ -187,7 +187,7 @@ function mst_sc_ticket_list(): string {
 /**
  * TICKET VIEW (Conversation)
  */
-function mst_sc_ticket_view(): string {
+function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
 
     if (!is_user_logged_in()) return '';
 
@@ -275,3 +275,4 @@ function mst_sc_ticket_view(): string {
     <?php
     return ob_get_clean();
 }
+
