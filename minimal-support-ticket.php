@@ -142,7 +142,7 @@ final class MST_Plugin {
      */
     public function enqueue_front() {
         // فقط وقتی شورتکدهای تیکت روی صفحه هست، CSS/JS لود بشه
-        if (!function_exists('mst_page_has_shortcodes') || !mst_page_has_shortcodes(['mst_ticket_form','mst_ticket_list','mst_ticket_view','mst_support'])) {
+       if (!function_exists('mst_page_has_shortcodes') || !mst_page_has_shortcodes(['mst_ticket_form','mst_ticket_list','mst_ticket_view','mst_ticket_chat','mst_support'])) {
             return;
         }
 
@@ -165,3 +165,4 @@ final class MST_Plugin {
 }
 
 MST_Plugin::instance();
+
