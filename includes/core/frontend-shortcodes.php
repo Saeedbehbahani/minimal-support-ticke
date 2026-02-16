@@ -313,7 +313,10 @@ function mst_render_ticket_list(string $new_url = ''): string {
     </div>
 
     <div class="mst-bottom-bar" role="region" aria-label="Create new ticket action bar">
-        <a class="mst-btn mst-btn--primary mst-btn--full mst-bottom-bar__btn" href="<?php echo esc_url($new_url); ?>">ارسال درخواست جدید</a>
+        <a class="mst-btn mst-btn--primary mst-btn--full mst-bottom-bar__btn mst-new-ticket-btn" href="<?php echo esc_url($new_url); ?>">
+            <span class="mst-btn-icon" aria-hidden="true">+</span>
+            <span class="mst-btn-text">ارسال درخواست جدید</span>
+        </a>
     </div>
 
     <?php
@@ -428,8 +431,13 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
                     <label class="mst-label">پاسخ شما</label>
                     <textarea name="message" class="mst-textarea" required rows="4"></textarea>
 
-                    <label class="mst-label">ضمیمه</label>
-                    <input class="mst-input-file" type="file" name="attachments[]" multiple>
+                    <label class="mst-label">آپلود فایل</label>
+                    <label class="mst-dropzone" for="mst-chat-attachments-upload">
+                        <span class="mst-dropzone__icon">＋</span>
+                        <span class="mst-dropzone__text">افزودن تصویر / فایل</span>
+                        <span class="mst-dropzone__hint">حداکثر ۳ فایل</span>
+                    </label>
+                    <input id="mst-chat-attachments-upload" class="mst-input-file" type="file" name="attachments[]" multiple>
 
                     <button type="submit" class="mst-btn mst-btn--primary mst-btn--full">ارسال پاسخ</button>
                 </form>
