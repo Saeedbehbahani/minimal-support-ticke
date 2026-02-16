@@ -61,7 +61,7 @@ function mst_relative_time_label(string $datetime): string {
  */
 function mst_status_icon(string $status): string {
     if ($status === 'closed') return '✓';
-    if ($status === 'answered') return '!';
+    if ($status === 'answered') return '⚠';
     return '◷';
 }
 
@@ -102,10 +102,10 @@ function mst_render_ticket_form(string $list_url = ''): string {
 
     ob_start(); ?>
 
-    <section class="mst-card mst-card--surface mst-ticket-form">
+    <section class="mst-card mst-card--surface mst-ticket-form" aria-label="New Ticket Form">
         <header class="mst-card__header mst-card__header--stacked">
-            <a class="mst-back-link" href="<?php echo esc_url($list_url); ?>">← بازگشت به لیست تیکت‌ها</a>
-            <h3 class="mst-title">ثبت تیکت جدید</h3>
+            <a class="mst-back-link" href="<?php echo esc_url($list_url); ?>">← Back to tickets</a>
+            <h3 class="mst-title">New Ticket</h3>
         </header>
 
         <form class="mst-form" method="post"
@@ -116,28 +116,28 @@ function mst_render_ticket_form(string $list_url = ''): string {
             <?php wp_nonce_field('mst_create_ticket', '_mst_nonce'); ?>
             <input type="hidden" name="redirect_to" value="<?php echo esc_attr($list_url); ?>">
 
-            <label class="mst-label">دسته‌بندی</label>
+            <label class="mst-label">Category</label>
             <select name="category" class="mst-input" required>
-                <option value="" disabled selected>یک دسته‌بندی را انتخاب کنید</option>
-                <option value="consultation">مشاوره</option>
-                <option value="support">پشتیبانی</option>
+                <option value="" disabled selected>Select a category</option>
+                <option value="consultation">Consultation</option>
+                <option value="support">Support</option>
             </select>
 
-            <label class="mst-label">موضوع</label>
-            <input type="text" name="subject" class="mst-input" required maxlength="255" placeholder="مثال: مشکل در پرداخت سفارش">
+            <label class="mst-label">Subject</label>
+            <input type="text" name="subject" class="mst-input" required maxlength="255" placeholder="E.g, Payment not going through">
 
-            <label class="mst-label">متن پیام</label>
-            <textarea name="message" class="mst-textarea" required rows="5" placeholder="جزئیات مشکل را کامل بنویسید"></textarea>
+            <label class="mst-label">Message</label>
+            <textarea name="message" class="mst-textarea" required rows="5" placeholder="Please provide as much details as possible"></textarea>
 
-            <label class="mst-label">آپلود فایل</label>
+            <label class="mst-label">Upload file</label>
             <label class="mst-dropzone" for="mst-attachments-upload">
                 <span class="mst-dropzone__icon">＋</span>
-                <span class="mst-dropzone__text">افزودن اسکرین‌شات / فایل</span>
-                <span class="mst-dropzone__hint">حداکثر ۳ فایل</span>
+                <span class="mst-dropzone__text">Add screenshot / file</span>
+                <span class="mst-dropzone__hint">Max 3 files</span>
             </label>
             <input id="mst-attachments-upload" class="mst-input-file" type="file" name="attachments[]" multiple>
 
-            <button type="submit" class="mst-btn mst-btn--primary mst-btn--full">ارسال تیکت</button>
+            <button type="submit" class="mst-btn mst-btn--primary mst-btn--full">Submit Ticket</button>
         </form>
     </section>
 
@@ -228,14 +228,13 @@ function mst_render_ticket_list(string $new_url = ''): string {
 
     ob_start(); ?>
 
-    <section class="mst-card mst-card--surface mst-ticket-list-page">
+    <section class="mst-card mst-card--surface mst-ticket-list-page" aria-label="Ticket List">
         <header class="mst-card__header">
-            <h3 class="mst-title">تیکت‌های من</h3>
-            <a class="mst-btn mst-btn--primary" href="<?php echo esc_url($new_url); ?>">ثبت تیکت جدید</a>
+            <h3 class="mst-title">My Tickets</h3>
         </header>
 
         <?php if (empty($tickets)): ?>
-            <div class="mst-empty">هنوز تیکتی ثبت نکردی.</div>
+            <div class="mst-empty">You have not created any tickets yet.</div>
         <?php else: ?>
             <div class="mst-ticket-list" role="list">
                 <?php foreach ($tickets as $t): ?>
@@ -257,13 +256,17 @@ function mst_render_ticket_list(string $new_url = ''): string {
                                 <span class="mst-ticket-item__status-icon" aria-hidden="true"><?php echo esc_html(mst_status_icon($status)); ?></span>
                             </div>
 
-                            <span class="mst-ticket-item__view-btn">مشاهده</span>
+                            <span class="mst-ticket-item__view-btn">View</span>
                         </a>
                     </article>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
     </section>
+
+    <div class="mst-bottom-bar" role="region" aria-label="Create new ticket action bar">
+        <a class="mst-btn mst-btn--primary mst-btn--full mst-bottom-bar__btn" href="<?php echo esc_url($new_url); ?>">Create New Ticket</a>
+    </div>
 
     <?php
     return ob_get_clean();
