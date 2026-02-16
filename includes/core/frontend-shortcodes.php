@@ -227,18 +227,20 @@ function mst_sc_ticket_chat($atts = []): string {
 
     ob_start(); ?>
 
-    <header class="mst-chat-topbar">
-        <a class="mst-btn mst-btn--ghost mst-chat-topbar__back" href="<?php echo esc_url($back_url); ?>">← بازگشت به تیکت‌ها</a>
-        <div class="mst-chat-topbar__title"><?php echo esc_html($atts['title']); ?></div>
-    </header>
+    <div class="mst-page mst-ticket-chat-page">
+        <header class="mst-chat-topbar">
+            <a class="mst-btn mst-btn--ghost mst-chat-topbar__back" href="<?php echo esc_url($back_url); ?>">← بازگشت به تیکت‌ها</a>
+            <div class="mst-chat-topbar__title"><?php echo esc_html($atts['title']); ?></div>
+        </header>
 
-    <?php if (!$ticket_id): ?>
-        <section class="mst-card mst-card--surface">
-            <div class="mst-alert">تیکتی انتخاب نشده.</div>
-        </section>
-    <?php else: ?>
-        <div class="mst-chat-view"><?php echo mst_sc_ticket_view(false); ?></div>
-    <?php endif; ?>
+        <?php if (!$ticket_id): ?>
+            <section class="mst-card mst-card--surface">
+                <div class="mst-alert">تیکتی انتخاب نشده.</div>
+            </section>
+        <?php else: ?>
+            <div class="mst-chat-view"><?php echo mst_sc_ticket_view(false); ?></div>
+        <?php endif; ?>
+    </div>
 
     <?php
     return mst_sc_wrap_page('chat', ob_get_clean());
@@ -377,18 +379,20 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
 
         <div class="mst-thread" aria-live="polite">
             <?php foreach ($messages as $msg): ?>
-                <?php $role = sanitize_key((string) ($msg['sender_role'] ?? 'user')); ?>
-                <article class="mst-message mst-message--<?php echo esc_attr($role); ?>">
-                    <div class="mst-message__meta">
-                        <?php echo ($role === 'admin') ? 'پشتیبانی' : 'شما'; ?>
-                        |
-                        <?php echo esc_html($msg['created_at']); ?>
-                    </div>
-
+                <?php
+                    $role = sanitize_key((string) ($msg['sender_role'] ?? 'user'));
+                    $timestamp = strtotime((string) ($msg['created_at'] ?? ''));
+                    $datetime_label = $timestamp
+                        ? wp_date('Y/m/d - H:i', $timestamp, wp_timezone())
+                        : (string) ($msg['created_at'] ?? '');
+                ?>
+                <article class="mst-message mst-chat-message--<?php echo esc_attr($role); ?>">
                     <div class="mst-message__body">
                         <?php echo nl2br(esc_html($msg['message'])); ?>
                         <?php echo mst_render_attachments($msg['attachments'] ?? null); ?>
                     </div>
+
+                    <div class="mst-message__meta"><?php echo esc_html($datetime_label); ?></div>
                 </article>
             <?php endforeach; ?>
         </div>
@@ -401,7 +405,12 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
                 <input type="hidden" name="next_status" value="<?php echo esc_attr($is_closed ? 'open' : 'closed'); ?>">
 
                 <button type="submit" class="mst-btn mst-btn--secondary">
-                    <?php echo $is_closed ? 'باز کردن مجدد' : 'بستن تیکت'; ?>
+                    <?php if ($is_closed): ?>
+                        باز کردن مجدد
+                    <?php else: ?>
+                        <span aria-hidden="true">✕</span>
+                        <span>بستن تیکت</span>
+                    <?php endif; ?>
                 </button>
             </form>
         </div>
@@ -422,7 +431,7 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
                     <label class="mst-label">ضمیمه</label>
                     <input class="mst-input-file" type="file" name="attachments[]" multiple>
 
-                    <button type="submit" class="mst-btn mst-btn--primary">ارسال پاسخ</button>
+                    <button type="submit" class="mst-btn mst-btn--primary mst-btn--full">ارسال پاسخ</button>
                 </form>
             </div>
         <?php endif; ?>
