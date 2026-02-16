@@ -61,6 +61,40 @@ function mst_relative_time_label(string $datetime): string {
 }
 
 /**
+ * Ticket list time label
+ * - Up to 7 days: relative Persian label
+ * - Older than 7 days: exact date + time based on WP timezone
+ */
+function mst_ticket_list_time_label(string $datetime): string {
+    $timestamp = strtotime($datetime);
+    if (!$timestamp) return $datetime;
+
+    $now  = (int) current_time('timestamp');
+    $diff = max(1, $now - $timestamp);
+
+    if ($diff > (7 * DAY_IN_SECONDS)) {
+        return wp_date('Y/m/d - H:i', $timestamp, wp_timezone());
+    }
+
+    if ($diff < MINUTE_IN_SECONDS) return 'لحظاتی پیش';
+
+    $units = [
+        'روز'   => DAY_IN_SECONDS,
+        'ساعت'  => HOUR_IN_SECONDS,
+        'دقیقه' => MINUTE_IN_SECONDS,
+    ];
+
+    foreach ($units as $label => $seconds) {
+        if ($diff >= $seconds) {
+            $value = (int) floor($diff / $seconds);
+            return sprintf('%s %s پیش', number_format_i18n($value), $label);
+        }
+    }
+
+    return $datetime;
+}
+
+/**
  * Status icon (inline SVG)
  */
 function mst_status_icon(string $status): string {
@@ -240,13 +274,13 @@ function mst_render_ticket_list(string $new_url = ''): string {
     ob_start(); ?>
 
     <div class="mst-page mst-ticket-list-page">
-        <section class="mst-card mst-card--surface" aria-label="Ticket List">
-            <header class="mst-card__header">
-                <h3 class="mst-title">My Tickets</h3>
+        <section class="mst-ticket-list-page__panel" aria-label="Ticket List">
+            <header class="mst-ticket-list-page__header">
+                <h3 class="mst-ticket-list-page__title">تیکت‌های من</h3>
             </header>
 
             <?php if (empty($tickets)): ?>
-                <div class="mst-empty">You have not created any tickets yet.</div>
+                <div class="mst-empty">هنوز تیکتی ثبت نکرده‌اید.</div>
             <?php else: ?>
                 <div class="mst-ticket-list" role="list">
                     <?php foreach ($tickets as $t): ?>
@@ -254,18 +288,18 @@ function mst_render_ticket_list(string $new_url = ''): string {
                         $status = sanitize_key((string) ($t['status'] ?? 'open'));
                         $ticket_url = add_query_arg('ticket_id', (int) $t['id'], $chat_url);
                         ?>
-                        <a class="mst-ticket-row" href="<?php echo esc_url($ticket_url); ?>" role="listitem" aria-label="<?php echo esc_attr(sprintf('Open ticket #%d', (int) $t['id'])); ?>">
-                            <div class="mst-ticket-row__content">
-                                <div class="mst-ticket-row__meta">
-                                    <div class="mst-ticket-row__name-wrap">
-                                        <span class="mst-ticket-row__name"><?php echo esc_html($customer_name); ?></span>
-                                        <span class="mst-ticket-row__id">#<?php echo esc_html($t['id']); ?></span>
+                        <a class="mst-ticket-card" href="<?php echo esc_url($ticket_url); ?>" role="listitem" aria-label="<?php echo esc_attr(sprintf('Open ticket #%d', (int) $t['id'])); ?>">
+                            <div class="mst-ticket-card__content">
+                                <div class="mst-ticket-card__meta">
+                                    <div class="mst-ticket-card__name-wrap">
+                                        <span class="mst-ticket-card__name"><?php echo esc_html($customer_name); ?></span>
+                                        <span class="mst-ticket-card__id">#<?php echo esc_html($t['id']); ?></span>
                                     </div>
-                                    <span class="mst-ticket-row__time"><?php echo esc_html(mst_relative_time_label((string) $t['updated_at'])); ?></span>
+                                    <span class="mst-ticket-card__time"><?php echo esc_html(mst_ticket_list_time_label((string) $t['updated_at'])); ?></span>
                                 </div>
-                                <h4 class="mst-ticket-row__subject"><?php echo esc_html($t['subject']); ?></h4>
+                                <h4 class="mst-ticket-card__subject"><?php echo esc_html($t['subject']); ?></h4>
                             </div>
-                            <span class="mst-ticket-row__status" aria-label="<?php echo esc_attr(mst_status_label($status)); ?>">
+                            <span class="mst-ticket-card__status" aria-label="<?php echo esc_attr(mst_status_label($status)); ?>">
                                 <?php echo mst_status_icon($status); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                             </span>
                         </a>
@@ -276,7 +310,7 @@ function mst_render_ticket_list(string $new_url = ''): string {
     </div>
 
     <div class="mst-bottom-bar" role="region" aria-label="Create new ticket action bar">
-        <a class="mst-btn mst-btn--primary mst-btn--full mst-bottom-bar__btn" href="<?php echo esc_url($new_url); ?>">Create New Ticket</a>
+        <a class="mst-btn mst-btn--primary mst-btn--full mst-bottom-bar__btn" href="<?php echo esc_url($new_url); ?>">ارسال درخواست جدید</a>
     </div>
 
     <?php
