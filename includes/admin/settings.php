@@ -11,7 +11,6 @@ function mst_admin_render_settings(): void {
     $opts = wp_parse_args($opts, [
         'notify_channel' => 'sms', // sms|off
         'admin_phones'   => '',
-        'sms_driver'     => 'pattern',
         'sms_api_key'    => '',
         'sms_sender'     => '',
         'sms_base_url'   => '',
@@ -19,10 +18,13 @@ function mst_admin_render_settings(): void {
         // pattern codes
         'sms_patterns'   => [
             'ticket_created_admin' => '',
-            'user_replied_admin'   => '',
             'admin_replied_user'   => '',
-            'status_changed_user'  => '',
         ],
+    ]);
+
+    $opts['sms_patterns'] = wp_parse_args(is_array($opts['sms_patterns']) ? $opts['sms_patterns'] : [], [
+        'ticket_created_admin' => '',
+        'admin_replied_user'   => '',
     ]);
 
     // Save
@@ -43,15 +45,12 @@ function mst_admin_render_settings(): void {
 
         $patterns = [
             'ticket_created_admin' => sanitize_text_field((string)($patterns_in['ticket_created_admin'] ?? '')),
-            'user_replied_admin'   => sanitize_text_field((string)($patterns_in['user_replied_admin'] ?? '')),
             'admin_replied_user'   => sanitize_text_field((string)($patterns_in['admin_replied_user'] ?? '')),
-            'status_changed_user'  => sanitize_text_field((string)($patterns_in['status_changed_user'] ?? '')),
         ];
 
         $new = [
             'notify_channel' => $notify_channel,
             'admin_phones'   => $admin_phones,
-            'sms_driver'     => 'pattern',
             'sms_api_key'    => $sms_api_key,
             'sms_sender'     => $sms_sender,
             'sms_base_url'   => $sms_base_url,
@@ -92,7 +91,7 @@ function mst_admin_render_settings(): void {
                     <th scope="row">شماره‌های ادمین</th>
                     <td>
                         <input type="text" name="admin_phones" value="<?php echo esc_attr($opts['admin_phones']); ?>" class="regular-text" placeholder="مثال: 0912..., 0935...">
-                        <p class="description">با کاما جدا کن. هر تیکت جدید/پاسخ کاربر به این شماره‌ها پیامک می‌شود.</p>
+                        <p class="description">با کاما جدا کن. هر تیکت جدید به این شماره‌ها پیامک می‌شود.</p>
                     </td>
                 </tr>
             </table>
@@ -139,23 +138,9 @@ function mst_admin_render_settings(): void {
                 </tr>
 
                 <tr>
-                    <th scope="row">پاسخ کاربر (به ادمین)</th>
-                    <td>
-                        <input type="text" name="sms_patterns[user_replied_admin]" value="<?php echo esc_attr($opts['sms_patterns']['user_replied_admin']); ?>" class="regular-text">
-                    </td>
-                </tr>
-
-                <tr>
                     <th scope="row">پاسخ ادمین (به کاربر)</th>
                     <td>
                         <input type="text" name="sms_patterns[admin_replied_user]" value="<?php echo esc_attr($opts['sms_patterns']['admin_replied_user']); ?>" class="regular-text">
-                    </td>
-                </tr>
-
-                <tr>
-                    <th scope="row">تغییر وضعیت (به کاربر)</th>
-                    <td>
-                        <input type="text" name="sms_patterns[status_changed_user]" value="<?php echo esc_attr($opts['sms_patterns']['status_changed_user']); ?>" class="regular-text">
                     </td>
                 </tr>
             </table>

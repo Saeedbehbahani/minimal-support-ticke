@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) exit;
 
 class MST_DB {
 
-    const DB_VERSION = '1.0.0';
+    const DB_VERSION = '1.1.0';
 
     public static function tickets_table(): string {
         global $wpdb;
@@ -37,6 +37,8 @@ class MST_DB {
             type VARCHAR(20) NOT NULL DEFAULT 'ticket',
             subject VARCHAR(255) NOT NULL,
             status VARCHAR(30) NOT NULL DEFAULT 'open',
+            admin_new_ticket_sms_sent TINYINT(1) NOT NULL DEFAULT 0,
+            user_first_reply_sms_sent TINYINT(1) NOT NULL DEFAULT 0,
             created_at DATETIME NOT NULL,
             updated_at DATETIME NOT NULL,
             PRIMARY KEY  (id),
@@ -85,6 +87,17 @@ class MST_DB {
 
         // Fix updated_at if legacy rows have zero
         $wpdb->query("UPDATE {$tickets} SET updated_at = created_at WHERE updated_at='0000-00-00 00:00:00' OR updated_at IS NULL");
+
+        // Add SMS sent flags for old installs
+        $admin_flag_exists = $wpdb->get_var($wpdb->prepare("SHOW COLUMNS FROM {$tickets} LIKE %s", 'admin_new_ticket_sms_sent'));
+        if ($admin_flag_exists === null) {
+            $wpdb->query("ALTER TABLE {$tickets} ADD COLUMN admin_new_ticket_sms_sent TINYINT(1) NOT NULL DEFAULT 0");
+        }
+
+        $user_flag_exists = $wpdb->get_var($wpdb->prepare("SHOW COLUMNS FROM {$tickets} LIKE %s", 'user_first_reply_sms_sent'));
+        if ($user_flag_exists === null) {
+            $wpdb->query("ALTER TABLE {$tickets} ADD COLUMN user_first_reply_sms_sent TINYINT(1) NOT NULL DEFAULT 0");
+        }
     }
 
     // Helpers

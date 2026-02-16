@@ -43,14 +43,11 @@ function mst_sms_provider() {
     $api_key   = (string) mst_opt('sms_api_key', '');
     $sender    = (string) mst_opt('sms_sender', '');
     $base_url  = (string) mst_opt('sms_base_url', ''); // optional
-    $driver    = (string) mst_opt('sms_driver', 'pattern'); // future proof
 
     if ($api_key === '') return null;
 
-    // MST_SMS_Provider should accept array config (we will finalize its constructor)
     try {
         return new MST_SMS_Provider([
-            'driver'   => $driver,
             'api_key'  => $api_key,
             'sender'   => $sender,
             'base_url' => $base_url,
@@ -58,6 +55,18 @@ function mst_sms_provider() {
     } catch (\Throwable $e) {
         return null;
     }
+}
+
+/**
+ * Mark ticket SMS flag as sent (1).
+ */
+function mst_mark_ticket_sms_sent(int $ticket_id, string $column): void {
+    if (!class_exists('MST_DB')) return;
+    if (!in_array($column, ['admin_new_ticket_sms_sent', 'user_first_reply_sms_sent'], true)) return;
+
+    global $wpdb;
+    $tickets = MST_DB::tickets_table();
+    $wpdb->update($tickets, [$column => 1], ['id' => $ticket_id], ['%d'], ['%d']);
 }
 
 /**
@@ -103,6 +112,7 @@ function mst_notify_ticket_created(int $ticket_id): void {
 
     $ticket = MST_DB::get_ticket($ticket_id);
     if (!$ticket) return;
+    if (!empty($ticket['admin_new_ticket_sms_sent'])) return;
 
     $admins = mst_admin_phones();
     if (empty($admins)) return;
@@ -113,8 +123,16 @@ function mst_notify_ticket_created(int $ticket_id): void {
         'status'    => (string) $ticket['status'],
     ];
 
+    $all_sent = true;
     foreach ($admins as $phone) {
-        mst_sms_send_pattern('ticket_created_admin', $phone, $params);
+        $sent = mst_sms_send_pattern('ticket_created_admin', $phone, $params);
+        if (!$sent) {
+            $all_sent = false;
+        }
+    }
+
+    if ($all_sent) {
+        mst_mark_ticket_sms_sent($ticket_id, 'admin_new_ticket_sms_sent');
     }
 }
 
@@ -127,6 +145,7 @@ function mst_notify_admin_replied(int $ticket_id): void {
 
     $ticket = MST_DB::get_ticket($ticket_id);
     if (!$ticket) return;
+    if (!empty($ticket['user_first_reply_sms_sent'])) return;
 
     $phone = mst_user_mobile((int) $ticket['user_id']);
     if (!$phone) return;
@@ -137,51 +156,8 @@ function mst_notify_admin_replied(int $ticket_id): void {
         'status'    => (string) $ticket['status'],
     ];
 
-    mst_sms_send_pattern('admin_replied_user', $phone, $params);
-}
-
-/**
- * EVENT 3: Status changed -> notify user
- */
-function mst_notify_status_changed(int $ticket_id, string $new_status): void {
-    if (!mst_sms_enabled()) return;
-    if (!class_exists('MST_DB')) return;
-
-    $ticket = MST_DB::get_ticket($ticket_id);
-    if (!$ticket) return;
-
-    $phone = mst_user_mobile((int) $ticket['user_id']);
-    if (!$phone) return;
-
-    $params = [
-        'ticket_id' => (string) $ticket_id,
-        'subject'   => (string) $ticket['subject'],
-        'status'    => (string) $new_status,
-    ];
-
-    mst_sms_send_pattern('status_changed_user', $phone, $params);
-}
-
-/**
- * EVENT: User replied -> notify admins (optional but useful)
- */
-function mst_notify_user_replied(int $ticket_id): void {
-    if (!mst_sms_enabled()) return;
-    if (!class_exists('MST_DB')) return;
-
-    $ticket = MST_DB::get_ticket($ticket_id);
-    if (!$ticket) return;
-
-    $admins = mst_admin_phones();
-    if (empty($admins)) return;
-
-    $params = [
-        'ticket_id' => (string) $ticket_id,
-        'subject'   => (string) $ticket['subject'],
-        'status'    => (string) $ticket['status'],
-    ];
-
-    foreach ($admins as $phone) {
-        mst_sms_send_pattern('user_replied_admin', $phone, $params);
+    $sent = mst_sms_send_pattern('admin_replied_user', $phone, $params);
+    if ($sent) {
+        mst_mark_ticket_sms_sent($ticket_id, 'user_first_reply_sms_sent');
     }
 }

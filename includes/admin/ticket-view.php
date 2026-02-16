@@ -73,10 +73,6 @@ function mst_admin_render_ticket_view(): void {
             'updated_at' => $now,
         ], ['id' => $ticket_id]);
 
-        if (function_exists('mst_notify_status_changed')) {
-            mst_notify_status_changed($ticket_id, $new_status);
-        }
-
         wp_safe_redirect(admin_url('admin.php?page=mst_ticket_view&ticket_id=' . $ticket_id));
         exit;
     }
