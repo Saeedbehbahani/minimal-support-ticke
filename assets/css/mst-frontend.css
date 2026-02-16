@@ -225,6 +225,57 @@
   margin-inline: auto;
 }
 
+.mst-ticket-new-page {
+  inline-size: min(100%, 860px);
+  margin-inline: auto;
+}
+
+.mst-ticket-new-page .mst-card {
+  display: grid;
+  gap: 6px;
+}
+
+.mst-ticket-new-page .mst-card__header {
+  margin-block-end: 6px;
+}
+
+.mst-ticket-new-page .mst-form {
+  gap: 16px;
+}
+
+.mst-ticket-new-page .mst-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mst-text-muted);
+  text-align: right;
+}
+
+.mst-ticket-new-page .mst-input,
+.mst-ticket-new-page .mst-textarea,
+.mst-ticket-new-page select.mst-input,
+.mst-ticket-new-page .mst-btn {
+  text-align: right;
+}
+
+.mst-ticket-new-page .mst-input,
+.mst-ticket-new-page .mst-textarea,
+.mst-ticket-new-page select.mst-input {
+  padding-inline: 14px;
+}
+
+.mst-ticket-new-page select.mst-input {
+  direction: rtl;
+}
+
+.mst-ticket-new-page .mst-dropzone {
+  text-align: center;
+}
+
+.mst-ticket-new-page .mst-btn--full {
+  margin-block-start: 2px;
+}
+
 .mst-ticket-list-page__panel {
   display: grid;
   gap: 12px;
@@ -328,6 +379,11 @@
 
 @media (max-width: 767px) {
   .mst-ticket-list-page {
+    inline-size: calc(100vw - 20px);
+    margin-inline: calc(50% - 50vw + 10px);
+  }
+
+  .mst-ticket-new-page {
     inline-size: calc(100vw - 20px);
     margin-inline: calc(50% - 50vw + 10px);
   }
