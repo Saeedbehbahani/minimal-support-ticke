@@ -61,12 +61,27 @@ function mst_relative_time_label(string $datetime): string {
 }
 
 /**
- * Status icon (monochrome)
+ * Status icon (inline SVG)
  */
 function mst_status_icon(string $status): string {
-    if ($status === 'closed') return '✓';
-    if ($status === 'answered') return '⚠';
-    return '◷';
+    $status = sanitize_key($status);
+
+    $kind = 'attention';
+    if (in_array($status, ['closed', 'resolved'], true)) {
+        $kind = 'closed';
+    } elseif (in_array($status, ['pending', 'waiting', 'answered', 'in_review'], true)) {
+        $kind = 'pending';
+    }
+
+    if ($kind === 'closed') {
+        return '<svg class="mst-status-icon mst-status-icon--closed" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="7" fill="none" stroke="#34C759" stroke-width="1.8"/><path d="M6.6 10.2l2.1 2.2 4.7-4.7" fill="none" stroke="#34C759" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    }
+
+    if ($kind === 'pending') {
+        return '<svg class="mst-status-icon mst-status-icon--pending" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="7" fill="none" stroke="#F4A623" stroke-width="1.8"/><path d="M10 6.8v3.8l2.2 1.4" fill="none" stroke="#F4A623" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    }
+
+    return '<svg class="mst-status-icon mst-status-icon--attention" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="7" fill="none" stroke="#FF3B30" stroke-width="1.8"/><path d="M10 6.3v5.1" fill="none" stroke="#FF3B30" stroke-width="1.8" stroke-linecap="round"/><circle cx="10" cy="13.6" r="0.9" fill="#FF3B30"/></svg>';
 }
 
 /**
@@ -217,44 +232,48 @@ function mst_render_ticket_list(string $new_url = ''): string {
     $new_url = $new_url ?: mst_get_page_url('mst_support_new_page_id', 'new-ticket');
 
     $chat_url = mst_get_page_url('mst_ticket_chat_page_id', 'ticket-chat');
+    $current_user = wp_get_current_user();
+    $customer_name = $current_user instanceof WP_User && !empty($current_user->display_name)
+        ? (string) $current_user->display_name
+        : 'کاربر';
 
     ob_start(); ?>
 
-    <section class="mst-card mst-card--surface mst-ticket-list-page" aria-label="Ticket List">
-        <header class="mst-card__header">
-            <h3 class="mst-title">My Tickets</h3>
-        </header>
+    <div class="mst-page mst-ticket-list-page">
+        <section class="mst-card mst-card--surface" aria-label="Ticket List">
+            <header class="mst-card__header">
+                <h3 class="mst-title">My Tickets</h3>
+            </header>
 
-        <?php if (empty($tickets)): ?>
-            <div class="mst-empty">You have not created any tickets yet.</div>
-        <?php else: ?>
-            <div class="mst-ticket-list" role="list">
-                <?php foreach ($tickets as $t): ?>
-                    <?php
-                    $status = sanitize_key((string) ($t['status'] ?? 'open'));
-                    $ticket_url = add_query_arg('ticket_id', (int) $t['id'], $chat_url);
-                    ?>
-                    <article class="mst-ticket-item" role="listitem">
-                        <a class="mst-ticket-item__link" href="<?php echo esc_url($ticket_url); ?>">
-                            <div class="mst-ticket-item__head">
-                                <span class="mst-ticket-item__id">#<?php echo esc_html($t['id']); ?></span>
-                                <span class="mst-ticket-item__time"><?php echo esc_html(mst_relative_time_label((string) $t['updated_at'])); ?></span>
+            <?php if (empty($tickets)): ?>
+                <div class="mst-empty">You have not created any tickets yet.</div>
+            <?php else: ?>
+                <div class="mst-ticket-list" role="list">
+                    <?php foreach ($tickets as $t): ?>
+                        <?php
+                        $status = sanitize_key((string) ($t['status'] ?? 'open'));
+                        $ticket_url = add_query_arg('ticket_id', (int) $t['id'], $chat_url);
+                        ?>
+                        <a class="mst-ticket-row" href="<?php echo esc_url($ticket_url); ?>" role="listitem" aria-label="<?php echo esc_attr(sprintf('Open ticket #%d', (int) $t['id'])); ?>">
+                            <div class="mst-ticket-row__content">
+                                <div class="mst-ticket-row__meta">
+                                    <div class="mst-ticket-row__name-wrap">
+                                        <span class="mst-ticket-row__name"><?php echo esc_html($customer_name); ?></span>
+                                        <span class="mst-ticket-row__id">#<?php echo esc_html($t['id']); ?></span>
+                                    </div>
+                                    <span class="mst-ticket-row__time"><?php echo esc_html(mst_relative_time_label((string) $t['updated_at'])); ?></span>
+                                </div>
+                                <h4 class="mst-ticket-row__subject"><?php echo esc_html($t['subject']); ?></h4>
                             </div>
-
-                            <h4 class="mst-ticket-item__title"><?php echo esc_html($t['subject']); ?></h4>
-
-                            <div class="mst-ticket-item__foot">
-                                <span class="mst-ticket-item__status"><?php echo esc_html(mst_status_label($status)); ?></span>
-                                <span class="mst-ticket-item__status-icon" aria-hidden="true"><?php echo esc_html(mst_status_icon($status)); ?></span>
-                            </div>
-
-                            <span class="mst-ticket-item__view-btn">View</span>
+                            <span class="mst-ticket-row__status" aria-label="<?php echo esc_attr(mst_status_label($status)); ?>">
+                                <?php echo mst_status_icon($status); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                            </span>
                         </a>
-                    </article>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-    </section>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </section>
+    </div>
 
     <div class="mst-bottom-bar" role="region" aria-label="Create new ticket action bar">
         <a class="mst-btn mst-btn--primary mst-btn--full mst-bottom-bar__btn" href="<?php echo esc_url($new_url); ?>">Create New Ticket</a>
