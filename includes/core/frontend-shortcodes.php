@@ -155,10 +155,10 @@ function mst_render_ticket_form(string $list_url = ''): string {
 
     ob_start(); ?>
 
-    <section class="mst-card mst-card--surface mst-ticket-form" aria-label="New Ticket Form">
+    <div class="mst-page mst-ticket-list-page mst-ticket-new-page">
+    <section class="mst-card mst-card--surface mst-ticket-form" aria-label="فرم ارسال تیکت جدید">
         <header class="mst-card__header mst-card__header--stacked">
-            <a class="mst-back-link" href="<?php echo esc_url($list_url); ?>">← Back to tickets</a>
-            <h3 class="mst-title">New Ticket</h3>
+            <a class="mst-back-link" href="<?php echo esc_url($list_url); ?>">← بازگشت به تیکت‌ها</a>
         </header>
 
         <form class="mst-form" method="post"
@@ -169,30 +169,31 @@ function mst_render_ticket_form(string $list_url = ''): string {
             <?php wp_nonce_field('mst_create_ticket', '_mst_nonce'); ?>
             <input type="hidden" name="redirect_to" value="<?php echo esc_attr($list_url); ?>">
 
-            <label class="mst-label">Category</label>
+            <label class="mst-label">دسته‌بندی</label>
             <select name="category" class="mst-input" required>
-                <option value="" disabled selected>Select a category</option>
-                <option value="consultation">Consultation</option>
-                <option value="support">Support</option>
+                <option value="" disabled selected>انتخاب دسته‌بندی</option>
+                <option value="consultation">مشاوره</option>
+                <option value="support">پشتیبانی</option>
             </select>
 
-            <label class="mst-label">Subject</label>
-            <input type="text" name="subject" class="mst-input" required maxlength="255" placeholder="E.g, Payment not going through">
+            <label class="mst-label">موضوع</label>
+            <input type="text" name="subject" class="mst-input" required maxlength="255" placeholder="عنوان را بنویسید...">
 
-            <label class="mst-label">Message</label>
-            <textarea name="message" class="mst-textarea" required rows="5" placeholder="Please provide as much details as possible"></textarea>
+            <label class="mst-label">پیام</label>
+            <textarea name="message" class="mst-textarea" required rows="5" placeholder="پیام‌تان را بنویسید..."></textarea>
 
-            <label class="mst-label">Upload file</label>
+            <label class="mst-label">آپلود فایل</label>
             <label class="mst-dropzone" for="mst-attachments-upload">
                 <span class="mst-dropzone__icon">＋</span>
-                <span class="mst-dropzone__text">Add screenshot / file</span>
-                <span class="mst-dropzone__hint">Max 3 files</span>
+                <span class="mst-dropzone__text">افزودن تصویر / فایل</span>
+                <span class="mst-dropzone__hint">حداکثر ۳ فایل</span>
             </label>
             <input id="mst-attachments-upload" class="mst-input-file" type="file" name="attachments[]" multiple>
 
-            <button type="submit" class="mst-btn mst-btn--primary mst-btn--full">Submit Ticket</button>
+            <button type="submit" class="mst-btn mst-btn--primary mst-btn--full">ارسال تیکت</button>
         </form>
     </section>
+    </div>
 
     <?php
     return ob_get_clean();
