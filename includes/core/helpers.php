@@ -86,3 +86,40 @@ function mst_req(string $key, $default = '') {
     if (isset($_GET[$key]))  return wp_unslash($_GET[$key]);
     return $default;
 }
+
+/**
+ * Read plugin page map option
+ */
+function mst_get_pages_option(): array {
+    $pages = get_option('mst_pages', []);
+    return is_array($pages) ? $pages : [];
+}
+
+/**
+ * Get plugin page id from mst_pages option
+ */
+function mst_get_page_id(string $key): int {
+    $pages = mst_get_pages_option();
+    return isset($pages[$key]) ? absint($pages[$key]) : 0;
+}
+
+/**
+ * Resolve plugin page URL by stored id, then by optional slug fallback
+ */
+function mst_get_page_url(string $key, string $fallback_slug = ''): string {
+    $page_id = mst_get_page_id($key);
+    if ($page_id > 0) {
+        $url = get_permalink($page_id);
+        if ($url) return $url;
+    }
+
+    if ($fallback_slug !== '') {
+        $page = get_page_by_path($fallback_slug, OBJECT, 'page');
+        if ($page instanceof WP_Post) {
+            $url = get_permalink($page->ID);
+            if ($url) return $url;
+        }
+    }
+
+    return home_url('/');
+}

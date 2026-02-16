@@ -10,6 +10,10 @@ function mst_register_shortcodes(): void {
     add_shortcode('mst_ticket_list', 'mst_sc_ticket_list');
     add_shortcode('mst_ticket_view', 'mst_sc_ticket_view');
 
+    // Dedicated support pages
+    add_shortcode('mst_support_list', 'mst_sc_ticket_list');
+    add_shortcode('mst_support_new', 'mst_sc_ticket_form');
+
     // SaaS chat wrapper (topbar + ticket view)
     add_shortcode('mst_ticket_chat', 'mst_sc_ticket_chat');
 
@@ -98,7 +102,7 @@ function mst_sc_support(): string {
  */
 function mst_render_ticket_form(string $list_url = ''): string {
 
-    $list_url = $list_url ?: add_query_arg('view', 'list', remove_query_arg('view'));
+    $list_url = $list_url ?: mst_get_page_url('mst_support_list_page_id', 'support');
 
     ob_start(); ?>
 
@@ -160,7 +164,6 @@ function mst_sc_ticket_form(): string {
 /**
  * SaaS CHAT WRAPPER
  * usage: [mst_ticket_chat]
- * back is hard-wired to page_id=11 for your site
  */
 function mst_sc_ticket_chat($atts = []): string {
 
@@ -168,12 +171,7 @@ function mst_sc_ticket_chat($atts = []): string {
         'title' => 'گفتگو',
     ], $atts);
 
-    // ✅ HARD FIX: Back goes to your tickets page: ?page_id=11
-    $back_page_id = 11;
-    $back_url = get_permalink($back_page_id);
-    if (!$back_url) {
-        $back_url = home_url('/?page_id=11');
-    }
+    $back_url = mst_get_page_url('mst_support_list_page_id', 'support');
 
     $ticket_id = absint(mst_req('ticket_id'));
 
@@ -216,15 +214,9 @@ function mst_render_ticket_list(string $new_url = ''): string {
         ARRAY_A
     );
 
-    $new_url = $new_url ?: add_query_arg('view', 'new', remove_query_arg('view'));
+    $new_url = $new_url ?: mst_get_page_url('mst_support_new_page_id', 'new-ticket');
 
-    // Chat page (by slug). If not found => fallback to page_id=25 (adjust if needed)
-    $chat_page = get_page_by_path('ticket-chat');
-    if ($chat_page) {
-        $chat_url = get_permalink($chat_page->ID);
-    } else {
-        $chat_url = home_url('/?page_id=25');
-    }
+    $chat_url = mst_get_page_url('mst_ticket_chat_page_id', 'ticket-chat');
 
     ob_start(); ?>
 
