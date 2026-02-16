@@ -14,6 +14,93 @@ define('MST_SLUG', 'minimal-support-ticket');
 define('MST_PATH', plugin_dir_path(__FILE__));
 define('MST_URL', plugin_dir_url(__FILE__));
 
+/**
+ * Find a page by exact title (fallback resolver)
+ */
+function mst_find_page_by_title(string $title): int {
+    $pages = get_posts([
+        'post_type'      => 'page',
+        'post_status'    => ['publish', 'draft', 'pending', 'private', 'future'],
+        'title'          => $title,
+        'posts_per_page' => 1,
+        'fields'         => 'ids',
+    ]);
+
+    if (is_array($pages) && !empty($pages[0])) {
+        return absint($pages[0]);
+    }
+
+    return 0;
+}
+
+/**
+ * Ensure a required plugin page exists and persist ID in mst_pages option
+ */
+function mst_ensure_page_exists(string $title, string $slug, string $content, string $option_key): int {
+    $pages = get_option('mst_pages', []);
+    $pages = is_array($pages) ? $pages : [];
+
+    $page_id = 0;
+
+    // 1) Preferred: existing stored page ID
+    if (!empty($pages[$option_key])) {
+        $candidate = absint($pages[$option_key]);
+        $post = $candidate ? get_post($candidate) : null;
+        if ($post instanceof WP_Post && $post->post_type === 'page' && $post->post_status !== 'trash') {
+            $page_id = $candidate;
+        }
+    }
+
+    // 2) By slug
+    if (!$page_id) {
+        $page = get_page_by_path($slug, OBJECT, 'page');
+        if ($page instanceof WP_Post) {
+            $page_id = (int) $page->ID;
+        }
+    }
+
+    // 3) By title (fallback)
+    if (!$page_id) {
+        $page_id = mst_find_page_by_title($title);
+    }
+
+    // Create when still missing
+    if (!$page_id) {
+        $page_id = wp_insert_post([
+            'post_type'    => 'page',
+            'post_status'  => 'publish',
+            'post_title'   => $title,
+            'post_name'    => $slug,
+            'post_content' => $content,
+        ]);
+        $page_id = is_wp_error($page_id) ? 0 : (int) $page_id;
+    }
+
+    if ($page_id) {
+        $post = get_post($page_id);
+        if ($post instanceof WP_Post && $post->post_status !== 'publish') {
+            wp_update_post([
+                'ID'          => $page_id,
+                'post_status' => 'publish',
+            ]);
+        }
+
+        $pages[$option_key] = $page_id;
+        update_option('mst_pages', $pages);
+    }
+
+    return $page_id;
+}
+
+/**
+ * Bootstrap required frontend pages
+ */
+function mst_bootstrap_pages(): void {
+    mst_ensure_page_exists('پشتیبانی', 'support', '[mst_support_list]', 'mst_support_list_page_id');
+    mst_ensure_page_exists('ثبت تیکت جدید', 'new-ticket', '[mst_support_new]', 'mst_support_new_page_id');
+    mst_ensure_page_exists('ticket-chat', 'ticket-chat', '[mst_ticket_chat]', 'mst_ticket_chat_page_id');
+}
+
 final class MST_Plugin {
 
     /** @var MST_Plugin|null */
@@ -101,6 +188,9 @@ final class MST_Plugin {
                 MST_DB::create_tables();
             }
         }
+
+        // Ensure frontend pages are created (or reused) without duplicates.
+        mst_bootstrap_pages();
     }
 
     /**
@@ -142,7 +232,7 @@ final class MST_Plugin {
      */
     public function enqueue_front() {
         // فقط وقتی شورتکدهای تیکت روی صفحه هست، CSS/JS لود بشه
-       if (!function_exists('mst_page_has_shortcodes') || !mst_page_has_shortcodes(['mst_ticket_form','mst_ticket_list','mst_ticket_view','mst_ticket_chat','mst_support'])) {
+       if (!function_exists('mst_page_has_shortcodes') || !mst_page_has_shortcodes(['mst_ticket_form','mst_ticket_list','mst_ticket_view','mst_ticket_chat','mst_support','mst_support_list','mst_support_new'])) {
             return;
         }
 
@@ -165,4 +255,3 @@ final class MST_Plugin {
 }
 
 MST_Plugin::instance();
-
