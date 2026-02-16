@@ -31,6 +31,11 @@ function mst_handle_create_ticket(): void {
 
     $subject = sanitize_text_field(mst_req('subject'));
     $message = sanitize_textarea_field(mst_req('message'));
+    $category = sanitize_key((string) mst_req('category'));
+    $allowed_categories = ['consultation', 'support'];
+    if (!in_array($category, $allowed_categories, true)) {
+        $category = 'support';
+    }
 
     if ($subject === '' || $message === '') {
         mst_redirect_back();
@@ -46,7 +51,7 @@ function mst_handle_create_ticket(): void {
     $wpdb->insert($tickets, [
         'user_id'    => $user_id,
         'admin_id'   => 0,
-        'type'       => 'ticket',
+        'type'       => $category,
         'subject'    => $subject,
         'status'     => 'open',
         'created_at' => $now,
@@ -75,7 +80,13 @@ function mst_handle_create_ticket(): void {
         }
     }
 
-    mst_redirect_back();
+    $redirect_to = esc_url_raw((string) mst_req('redirect_to'));
+    if (!$redirect_to) {
+        $redirect_to = add_query_arg('view', 'list', remove_query_arg('view'));
+    }
+
+    wp_safe_redirect($redirect_to);
+    exit;
 }
 
 /**
