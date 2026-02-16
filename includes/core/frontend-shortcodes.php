@@ -14,9 +14,7 @@ function mst_register_shortcodes(): void {
     add_shortcode('mst_ticket_chat', 'mst_sc_ticket_chat');
 
     // Backward compatibility
-    add_shortcode('mst_support', function () {
-        return mst_sc_ticket_form() . mst_sc_ticket_list();
-    });
+    add_shortcode('mst_support', 'mst_sc_support');
 }
 
 /**
@@ -29,18 +27,84 @@ function mst_sc_wrap_page(string $variant, string $content): string {
 }
 
 /**
- * TICKET FORM
+ * Relative time label (FA)
  */
-function mst_sc_ticket_form(): string {
+function mst_relative_time_label(string $datetime): string {
+    $timestamp = strtotime($datetime);
+    if (!$timestamp) return $datetime;
 
-    if (!is_user_logged_in()) {
-        return mst_sc_wrap_page('form', '<div class="mst-alert">برای ارسال تیکت باید وارد حساب کاربری شوید.</div>');
+    $diff = max(1, current_time('timestamp') - $timestamp);
+
+    if ($diff < MINUTE_IN_SECONDS) return 'لحظاتی پیش';
+
+    $units = [
+        'سال'   => YEAR_IN_SECONDS,
+        'ماه'   => MONTH_IN_SECONDS,
+        'هفته'  => WEEK_IN_SECONDS,
+        'روز'   => DAY_IN_SECONDS,
+        'ساعت'  => HOUR_IN_SECONDS,
+        'دقیقه' => MINUTE_IN_SECONDS,
+    ];
+
+    foreach ($units as $label => $seconds) {
+        if ($diff >= $seconds) {
+            $value = (int) floor($diff / $seconds);
+            return sprintf('%d %s پیش', $value, $label);
+        }
     }
+
+    return $datetime;
+}
+
+/**
+ * Status icon (monochrome)
+ */
+function mst_status_icon(string $status): string {
+    if ($status === 'closed') return '✓';
+    if ($status === 'answered') return '!';
+    return '◷';
+}
+
+/**
+ * Support page with view switcher (list/new)
+ */
+function mst_sc_support(): string {
+    if (!is_user_logged_in()) {
+        return mst_sc_wrap_page('support', '<div class="mst-alert">برای ارسال تیکت باید وارد حساب کاربری شوید.</div>');
+    }
+
+    $view = sanitize_key((string) mst_req('view', 'list'));
+    if (!in_array($view, ['list', 'new'], true)) {
+        $view = 'list';
+    }
+
+    $base_url = remove_query_arg('view');
+    if (!$base_url) {
+        $base_url = home_url('/');
+    }
+
+    $list_url = add_query_arg('view', 'list', $base_url);
+    $new_url  = add_query_arg('view', 'new', $base_url);
+
+    $content = ($view === 'new')
+        ? mst_render_ticket_form($list_url)
+        : mst_render_ticket_list($new_url);
+
+    return mst_sc_wrap_page('support-' . $view, $content);
+}
+
+/**
+ * Ticket form inner template
+ */
+function mst_render_ticket_form(string $list_url = ''): string {
+
+    $list_url = $list_url ?: add_query_arg('view', 'list', remove_query_arg('view'));
 
     ob_start(); ?>
 
     <section class="mst-card mst-card--surface mst-ticket-form">
-        <header class="mst-card__header">
+        <header class="mst-card__header mst-card__header--stacked">
+            <a class="mst-back-link" href="<?php echo esc_url($list_url); ?>">← بازگشت به لیست تیکت‌ها</a>
             <h3 class="mst-title">ثبت تیکت جدید</h3>
         </header>
 
@@ -50,22 +114,47 @@ function mst_sc_ticket_form(): string {
 
             <input type="hidden" name="action" value="mst_create_ticket">
             <?php wp_nonce_field('mst_create_ticket', '_mst_nonce'); ?>
+            <input type="hidden" name="redirect_to" value="<?php echo esc_attr($list_url); ?>">
+
+            <label class="mst-label">دسته‌بندی</label>
+            <select name="category" class="mst-input" required>
+                <option value="" disabled selected>یک دسته‌بندی را انتخاب کنید</option>
+                <option value="consultation">مشاوره</option>
+                <option value="support">پشتیبانی</option>
+            </select>
 
             <label class="mst-label">موضوع</label>
-            <input type="text" name="subject" class="mst-input" required maxlength="255">
+            <input type="text" name="subject" class="mst-input" required maxlength="255" placeholder="مثال: مشکل در پرداخت سفارش">
 
-            <label class="mst-label">پیام</label>
-            <textarea name="message" class="mst-textarea" required rows="5"></textarea>
+            <label class="mst-label">متن پیام</label>
+            <textarea name="message" class="mst-textarea" required rows="5" placeholder="جزئیات مشکل را کامل بنویسید"></textarea>
 
-            <label class="mst-label">ضمیمه (اختیاری - حداکثر ۳ فایل)</label>
-            <input class="mst-input-file" type="file" name="attachments[]" multiple>
+            <label class="mst-label">آپلود فایل</label>
+            <label class="mst-dropzone" for="mst-attachments-upload">
+                <span class="mst-dropzone__icon">＋</span>
+                <span class="mst-dropzone__text">افزودن اسکرین‌شات / فایل</span>
+                <span class="mst-dropzone__hint">حداکثر ۳ فایل</span>
+            </label>
+            <input id="mst-attachments-upload" class="mst-input-file" type="file" name="attachments[]" multiple>
 
-            <button type="submit" class="mst-btn mst-btn--primary">ارسال تیکت</button>
+            <button type="submit" class="mst-btn mst-btn--primary mst-btn--full">ارسال تیکت</button>
         </form>
     </section>
 
     <?php
-    return mst_sc_wrap_page('form', ob_get_clean());
+    return ob_get_clean();
+}
+
+/**
+ * TICKET FORM
+ */
+function mst_sc_ticket_form(): string {
+
+    if (!is_user_logged_in()) {
+        return mst_sc_wrap_page('form', '<div class="mst-alert">برای ارسال تیکت باید وارد حساب کاربری شوید.</div>');
+    }
+
+    return mst_sc_wrap_page('form', mst_render_ticket_form());
 }
 
 /**
@@ -108,11 +197,9 @@ function mst_sc_ticket_chat($atts = []): string {
 }
 
 /**
- * TICKET LIST (User only)
+ * Ticket list inner template
  */
-function mst_sc_ticket_list(): string {
-
-    if (!is_user_logged_in()) return '';
+function mst_render_ticket_list(string $new_url = ''): string {
 
     global $wpdb;
     $table   = MST_DB::tickets_table();
@@ -129,6 +216,8 @@ function mst_sc_ticket_list(): string {
         ARRAY_A
     );
 
+    $new_url = $new_url ?: add_query_arg('view', 'new', remove_query_arg('view'));
+
     // Chat page (by slug). If not found => fallback to page_id=25 (adjust if needed)
     $chat_page = get_page_by_path('ticket-chat');
     if ($chat_page) {
@@ -142,6 +231,7 @@ function mst_sc_ticket_list(): string {
     <section class="mst-card mst-card--surface mst-ticket-list-page">
         <header class="mst-card__header">
             <h3 class="mst-title">تیکت‌های من</h3>
+            <a class="mst-btn mst-btn--primary" href="<?php echo esc_url($new_url); ?>">ثبت تیکت جدید</a>
         </header>
 
         <?php if (empty($tickets)): ?>
@@ -154,20 +244,21 @@ function mst_sc_ticket_list(): string {
                     $ticket_url = add_query_arg('ticket_id', (int) $t['id'], $chat_url);
                     ?>
                     <article class="mst-ticket-item" role="listitem">
-                        <div class="mst-ticket-item__head">
-                            <span class="mst-ticket-item__id">#<?php echo esc_html($t['id']); ?></span>
-                            <span class="mst-badge mst-badge--<?php echo esc_attr($status); ?>">
-                                <?php echo esc_html(mst_status_label($status)); ?>
-                            </span>
-                        </div>
+                        <a class="mst-ticket-item__link" href="<?php echo esc_url($ticket_url); ?>">
+                            <div class="mst-ticket-item__head">
+                                <span class="mst-ticket-item__id">#<?php echo esc_html($t['id']); ?></span>
+                                <span class="mst-ticket-item__time"><?php echo esc_html(mst_relative_time_label((string) $t['updated_at'])); ?></span>
+                            </div>
 
-                        <h4 class="mst-ticket-item__title"><?php echo esc_html($t['subject']); ?></h4>
+                            <h4 class="mst-ticket-item__title"><?php echo esc_html($t['subject']); ?></h4>
 
-                        <p class="mst-ticket-item__meta">آخرین بروزرسانی: <?php echo esc_html($t['updated_at']); ?></p>
+                            <div class="mst-ticket-item__foot">
+                                <span class="mst-ticket-item__status"><?php echo esc_html(mst_status_label($status)); ?></span>
+                                <span class="mst-ticket-item__status-icon" aria-hidden="true"><?php echo esc_html(mst_status_icon($status)); ?></span>
+                            </div>
 
-                        <div class="mst-ticket-item__actions">
-                            <a class="mst-btn mst-btn--secondary mst-btn--sm" href="<?php echo esc_url($ticket_url); ?>">مشاهده گفتگو</a>
-                        </div>
+                            <span class="mst-ticket-item__view-btn">مشاهده</span>
+                        </a>
                     </article>
                 <?php endforeach; ?>
             </div>
@@ -175,7 +266,17 @@ function mst_sc_ticket_list(): string {
     </section>
 
     <?php
-    return mst_sc_wrap_page('list', ob_get_clean());
+    return ob_get_clean();
+}
+
+/**
+ * TICKET LIST (User only)
+ */
+function mst_sc_ticket_list(): string {
+
+    if (!is_user_logged_in()) return '';
+
+    return mst_sc_wrap_page('list', mst_render_ticket_list());
 }
 
 /**

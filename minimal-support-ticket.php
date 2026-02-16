@@ -146,7 +146,7 @@ final class MST_Plugin {
             return;
         }
 
-        wp_enqueue_style('mst-frontend', MST_URL . 'assets/css/frontend.css', [], MST_VERSION);
+        wp_enqueue_style('mst-frontend', MST_URL . 'assets/css/mst-frontend.css', [], MST_VERSION);
 
         // اگر بعداً JS لازم شد:
         // wp_enqueue_script('mst-frontend', MST_URL . 'assets/js/frontend.js', ['jquery'], MST_VERSION, true);
