@@ -60,6 +60,14 @@ function mst_handle_create_ticket(): void {
 
     $ticket_id = (int) $wpdb->insert_id;
 
+    if ($ticket_id <= 0 && function_exists('mst_sms_debug_log')) {
+        mst_sms_debug_log('Ticket insert did not return a valid insert_id.', [
+            'event'     => 'ticket_created_admin',
+            'ticket_id' => $ticket_id,
+            'user_id'   => $user_id,
+        ]);
+    }
+
     if ($ticket_id) {
 
         $attachments = mst_handle_attachments_upload();

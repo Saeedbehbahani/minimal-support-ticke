@@ -44,13 +44,36 @@ class MST_SMS_Adapter_Pattern {
             'template' => $pattern_code,
         ];
 
-        // Map params to token, token2, token3...
-        $i = 1;
-        foreach ($params as $value) {
-            if ($i > 10) break; // limit
-            $key = $i === 1 ? 'token' : 'token' . $i;
-            $body[$key] = (string) $value;
-            $i++;
+        // Explicit token map when associative array contains token keys.
+        if (array_key_exists('token', $params)) {
+            $token = (string) $params['token'];
+            if ($token !== '') {
+                $body['token'] = $token;
+            }
+
+            for ($i = 2; $i <= 10; $i++) {
+                $key = 'token' . $i;
+                if (array_key_exists($key, $params) && (string) $params[$key] !== '') {
+                    $body[$key] = (string) $params[$key];
+                }
+            }
+        } else {
+            // Backward-compatible positional mapping.
+            $i = 1;
+            foreach ($params as $value) {
+                if ($i > 10) break;
+                $key = $i === 1 ? 'token' : 'token' . $i;
+                $body[$key] = (string) $value;
+                $i++;
+            }
+        }
+
+        if (function_exists('mst_sms_debug_log')) {
+            mst_sms_debug_log('Kavenegar request body prepared.', [
+                'endpoint' => $endpoint,
+                'body'     => $body,
+                'encoded'  => http_build_query($body, '', '&'),
+            ]);
         }
 
         $args = [
@@ -65,25 +88,44 @@ class MST_SMS_Adapter_Pattern {
         $response = wp_remote_post($endpoint, $args);
 
         if (is_wp_error($response)) {
+            if (function_exists('mst_sms_debug_log')) {
+                mst_sms_debug_log('Kavenegar request failed with WP_Error.', [
+                    'error' => $response->get_error_message(),
+                ]);
+            }
             error_log('MST SMS send failed (WP_Error): ' . $response->get_error_message());
             return false;
         }
 
         $code = (int) wp_remote_retrieve_response_code($response);
+        $res_body = (string) wp_remote_retrieve_body($response);
+        $json = json_decode($res_body, true);
+        $return_status = is_array($json) ? (int) ($json['return']['status'] ?? 0) : 0;
+        $return_message = is_array($json) ? (string) ($json['return']['message'] ?? '') : '';
+
+        if (function_exists('mst_sms_debug_log')) {
+            mst_sms_debug_log('Kavenegar response received.', [
+                'http_code'       => $code,
+                'raw_body'        => $res_body,
+                'return_status'   => $return_status,
+                'return_message'  => $return_message,
+            ]);
+        }
+
         if ($code < 200 || $code >= 300) {
-            error_log('MST SMS send failed (HTTP ' . $code . '): ' . wp_remote_retrieve_body($response));
+            error_log('MST SMS send failed (HTTP ' . $code . '): ' . $res_body);
             return false;
         }
 
-        $res_body = wp_remote_retrieve_body($response);
-        if (!$res_body) return false;
-
-        $json = json_decode($res_body, true);
-        if (!is_array($json)) return false;
-
-        // Kavenegar success structure
-        if (isset($json['return']['status']) && (int)$json['return']['status'] === 200) {
+        if ($return_status === 200) {
             return true;
+        }
+
+        if (function_exists('mst_sms_debug_log')) {
+            mst_sms_debug_log('Kavenegar returned non-success status.', [
+                'return_status'  => $return_status,
+                'return_message' => $return_message,
+            ]);
         }
 
         return false;
