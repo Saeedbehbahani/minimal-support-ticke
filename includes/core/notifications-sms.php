@@ -2,6 +2,25 @@
 if (!defined('ABSPATH')) exit;
 
 /**
+ * Debug logger (only when WP_DEBUG is enabled).
+ */
+function mst_sms_debug_log(string $message, array $context = []): void {
+    if (!defined('WP_DEBUG') || WP_DEBUG !== true) {
+        return;
+    }
+
+    $suffix = '';
+    if (!empty($context)) {
+        $encoded = wp_json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if (is_string($encoded) && $encoded !== '') {
+            $suffix = ' ' . $encoded;
+        }
+    }
+
+    error_log('[MST SMS DEBUG] ' . $message . $suffix);
+}
+
+/**
  * Read plugin options
  */
 function mst_opt(string $key, $default = '') {
@@ -82,7 +101,20 @@ function mst_sms_send_pattern(string $pattern_key, string $to, array $params = [
     $patterns = (array) mst_opt('sms_patterns', []);
     $pattern_code = $patterns[$pattern_key] ?? '';
 
-    if (!$pattern_code) return false;
+    if (!$pattern_code) {
+        mst_sms_debug_log('Pattern code missing for event.', [
+            'event'    => $pattern_key,
+            'receptor' => $to,
+        ]);
+        return false;
+    }
+
+    mst_sms_debug_log('Automatic SMS send requested.', [
+        'event'    => $pattern_key,
+        'receptor' => $to,
+        'pattern'  => $pattern_code,
+        'tokens'   => $params,
+    ]);
 
     try {
         // We'll implement send_pattern in provider
@@ -110,6 +142,14 @@ function mst_notify_ticket_created(int $ticket_id): void {
     if (!mst_sms_enabled()) return;
     if (!class_exists('MST_DB')) return;
 
+    if ($ticket_id <= 0) {
+        mst_sms_debug_log('Abort ticket_created_admin SMS: invalid ticket_id.', [
+            'event'     => 'ticket_created_admin',
+            'ticket_id' => $ticket_id,
+        ]);
+        return;
+    }
+
     $ticket = MST_DB::get_ticket($ticket_id);
     if (!$ticket) return;
     if (!empty($ticket['admin_new_ticket_sms_sent'])) return;
@@ -118,10 +158,16 @@ function mst_notify_ticket_created(int $ticket_id): void {
     if (empty($admins)) return;
 
     $params = [
-        'ticket_id' => (string) $ticket_id,
-        'subject'   => (string) $ticket['subject'],
-        'status'    => (string) $ticket['status'],
+        'token' => (string) $ticket_id,
     ];
+
+    mst_sms_debug_log('Prepared automatic SMS payload for ticket_created_admin.', [
+        'event'      => 'ticket_created_admin',
+        'ticket_id'  => $ticket_id,
+        'receptors'  => $admins,
+        'pattern'    => ((array) mst_opt('sms_patterns', []))['ticket_created_admin'] ?? '',
+        'tokens'     => $params,
+    ]);
 
     $all_sent = true;
     foreach ($admins as $phone) {
@@ -143,6 +189,14 @@ function mst_notify_admin_replied(int $ticket_id): void {
     if (!mst_sms_enabled()) return;
     if (!class_exists('MST_DB')) return;
 
+    if ($ticket_id <= 0) {
+        mst_sms_debug_log('Abort admin_replied_user SMS: invalid ticket_id.', [
+            'event'     => 'admin_replied_user',
+            'ticket_id' => $ticket_id,
+        ]);
+        return;
+    }
+
     $ticket = MST_DB::get_ticket($ticket_id);
     if (!$ticket) return;
     if (!empty($ticket['user_first_reply_sms_sent'])) return;
@@ -151,10 +205,16 @@ function mst_notify_admin_replied(int $ticket_id): void {
     if (!$phone) return;
 
     $params = [
-        'ticket_id' => (string) $ticket_id,
-        'subject'   => (string) $ticket['subject'],
-        'status'    => (string) $ticket['status'],
+        'token' => (string) $ticket_id,
     ];
+
+    mst_sms_debug_log('Prepared automatic SMS payload for admin_replied_user.', [
+        'event'      => 'admin_replied_user',
+        'ticket_id'  => $ticket_id,
+        'receptors'  => [$phone],
+        'pattern'    => ((array) mst_opt('sms_patterns', []))['admin_replied_user'] ?? '',
+        'tokens'     => $params,
+    ]);
 
     $sent = mst_sms_send_pattern('admin_replied_user', $phone, $params);
     if ($sent) {

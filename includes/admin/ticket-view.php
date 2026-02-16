@@ -24,6 +24,18 @@ function mst_admin_render_ticket_view(): void {
     if (!empty($_POST['mst_admin_reply_submit'])) {
         check_admin_referer('mst_admin_reply', '_mst_nonce');
 
+        $reply_ticket_id = absint($_POST['ticket_id'] ?? $ticket_id);
+        if ($reply_ticket_id <= 0) {
+            if (function_exists('mst_sms_debug_log')) {
+                mst_sms_debug_log('Abort admin reply SMS flow: invalid ticket_id in reply handler.', [
+                    'event'     => 'admin_replied_user',
+                    'ticket_id' => $reply_ticket_id,
+                ]);
+            }
+            wp_safe_redirect(admin_url('admin.php?page=mst_tickets'));
+            exit;
+        }
+
         $msg = sanitize_textarea_field(mst_req('message'));
         if ($msg !== '') {
 
@@ -33,7 +45,7 @@ function mst_admin_render_ticket_view(): void {
             $attachments_json = mst_attachments_to_json($attachments);
 
             $wpdb->insert($messages, [
-                'ticket_id'   => $ticket_id,
+                'ticket_id'   => $reply_ticket_id,
                 'sender_role' => 'admin',
                 'sender_id'   => get_current_user_id(),
                 'message'     => $msg,
@@ -46,14 +58,14 @@ function mst_admin_render_ticket_view(): void {
                 'admin_id'    => get_current_user_id(),
                 'status'      => 'answered',
                 'updated_at'  => $now,
-            ], ['id' => $ticket_id]);
+            ], ['id' => $reply_ticket_id]);
 
             if (function_exists('mst_notify_admin_replied')) {
-                mst_notify_admin_replied($ticket_id);
+                mst_notify_admin_replied($reply_ticket_id);
             }
         }
 
-        wp_safe_redirect(admin_url('admin.php?page=mst_ticket_view&ticket_id=' . $ticket_id));
+        wp_safe_redirect(admin_url('admin.php?page=mst_ticket_view&ticket_id=' . $reply_ticket_id));
         exit;
     }
 
