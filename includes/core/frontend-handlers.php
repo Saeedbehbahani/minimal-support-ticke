@@ -134,10 +134,6 @@ function mst_handle_reply_ticket(): void {
         'updated_at' => $now,
     ], ['id' => $ticket_id]);
 
-    if (function_exists('mst_notify_user_replied')) {
-        mst_notify_user_replied($ticket_id);
-    }
-
     mst_redirect_back();
 }
 
@@ -169,10 +165,6 @@ function mst_handle_toggle_status(): void {
         'status'     => $next_status,
         'updated_at' => $now,
     ], ['id' => $ticket_id]);
-
-    if (function_exists('mst_notify_status_changed')) {
-        mst_notify_status_changed($ticket_id, $next_status);
-    }
 
     mst_redirect_back();
 }

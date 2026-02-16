@@ -65,11 +65,13 @@ class MST_SMS_Adapter_Pattern {
         $response = wp_remote_post($endpoint, $args);
 
         if (is_wp_error($response)) {
+            error_log('MST SMS send failed (WP_Error): ' . $response->get_error_message());
             return false;
         }
 
-        $code = wp_remote_retrieve_response_code($response);
-        if ($code !== 200) {
+        $code = (int) wp_remote_retrieve_response_code($response);
+        if ($code < 200 || $code >= 300) {
+            error_log('MST SMS send failed (HTTP ' . $code . '): ' . wp_remote_retrieve_body($response));
             return false;
         }
 

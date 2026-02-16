@@ -3,11 +3,10 @@ if (!defined('ABSPATH')) exit;
 
 /**
  * Main SMS Provider Wrapper
- * Currently supports: pattern driver only
+ * Supports Pattern SMS only.
  */
 class MST_SMS_Provider {
 
-    protected string $driver;
     protected string $api_key;
     protected string $sender;
     protected string $base_url;
@@ -16,23 +15,19 @@ class MST_SMS_Provider {
 
     public function __construct(array $config = []) {
 
-        $this->driver   = (string)($config['driver']   ?? 'pattern');
         $this->api_key  = (string)($config['api_key']  ?? '');
         $this->sender   = (string)($config['sender']   ?? '');
         $this->base_url = (string)($config['base_url'] ?? '');
 
-        if ($this->driver === 'pattern') {
-
-            if (!class_exists('MST_SMS_Adapter_Pattern')) {
-                throw new Exception('Pattern adapter not loaded.');
-            }
-
-            $this->adapter = new MST_SMS_Adapter_Pattern([
-                'api_key'  => $this->api_key,
-                'sender'   => $this->sender,
-                'base_url' => $this->base_url,
-            ]);
+        if (!class_exists('MST_SMS_Adapter_Pattern')) {
+            throw new Exception('Pattern adapter not loaded.');
         }
+
+        $this->adapter = new MST_SMS_Adapter_Pattern([
+            'api_key'  => $this->api_key,
+            'sender'   => $this->sender,
+            'base_url' => $this->base_url,
+        ]);
     }
 
     /**
