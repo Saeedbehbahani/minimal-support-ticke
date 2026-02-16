@@ -13,12 +13,8 @@ function mst_register_shortcodes(): void {
     // SaaS chat wrapper (topbar + ticket view)
     add_shortcode('mst_ticket_chat', 'mst_sc_ticket_chat');
 
-    // New dedicated shortcodes
-    add_shortcode('mst_support_list', 'mst_sc_support_list');
-    add_shortcode('mst_support_new', 'mst_sc_support_new');
-
-    // Backward compatibility: support page stays list-only
-    add_shortcode('mst_support', 'mst_sc_support_list');
+    // Backward compatibility
+    add_shortcode('mst_support', 'mst_sc_support');
 }
 
 /**
@@ -28,45 +24,6 @@ function mst_sc_wrap_page(string $variant, string $content): string {
     $variant = sanitize_html_class($variant);
 
     return '<mst-app class="mst-app"><mst-shell class="mst-shell"><mst-page class="mst-page mst-page--' . esc_attr($variant) . '">' . $content . '</mst-page></mst-shell></mst-app>';
-}
-
-/**
- * Find URL of first published page containing a shortcode
- */
-function mst_find_page_url_by_shortcode(string $shortcode, string $fallback = ''): string {
-    static $cache = [];
-
-    $key = trim($shortcode);
-    if ($key === '') {
-        return $fallback;
-    }
-
-    if (isset($cache[$key])) {
-        return $cache[$key];
-    }
-
-    $pages = get_posts([
-        'post_type'      => 'page',
-        'post_status'    => 'publish',
-        'posts_per_page' => -1,
-        'fields'         => 'ids',
-        'orderby'        => 'ID',
-        'order'          => 'ASC',
-    ]);
-
-    foreach ($pages as $page_id) {
-        $content = (string) get_post_field('post_content', $page_id);
-        if ($content !== '' && has_shortcode($content, $key)) {
-            $url = get_permalink((int) $page_id);
-            if ($url) {
-                $cache[$key] = $url;
-                return $url;
-            }
-        }
-    }
-
-    $cache[$key] = $fallback;
-    return $fallback;
 }
 
 /**
@@ -109,16 +66,39 @@ function mst_status_icon(string $status): string {
 }
 
 /**
+ * Support page with view switcher (list/new)
+ */
+function mst_sc_support(): string {
+    if (!is_user_logged_in()) {
+        return mst_sc_wrap_page('support', '<div class="mst-alert">برای ارسال تیکت باید وارد حساب کاربری شوید.</div>');
+    }
+
+    $view = sanitize_key((string) mst_req('view', 'list'));
+    if (!in_array($view, ['list', 'new'], true)) {
+        $view = 'list';
+    }
+
+    $base_url = remove_query_arg('view');
+    if (!$base_url) {
+        $base_url = home_url('/');
+    }
+
+    $list_url = add_query_arg('view', 'list', $base_url);
+    $new_url  = add_query_arg('view', 'new', $base_url);
+
+    $content = ($view === 'new')
+        ? mst_render_ticket_form($list_url)
+        : mst_render_ticket_list($new_url);
+
+    return mst_sc_wrap_page('support-' . $view, $content);
+}
+
+/**
  * Ticket form inner template
  */
 function mst_render_ticket_form(string $list_url = ''): string {
 
-    if ($list_url === '') {
-        $list_url = mst_find_page_url_by_shortcode('mst_support_list');
-        if ($list_url === '') {
-            $list_url = mst_find_page_url_by_shortcode('mst_support', home_url('/'));
-        }
-    }
+    $list_url = $list_url ?: add_query_arg('view', 'list', remove_query_arg('view'));
 
     ob_start(); ?>
 
@@ -178,17 +158,6 @@ function mst_sc_ticket_form(): string {
 }
 
 /**
- * Dedicated support new-ticket page
- */
-function mst_sc_support_new(): string {
-    if (!is_user_logged_in()) {
-        return mst_sc_wrap_page('support-new', '<div class="mst-alert">برای ارسال تیکت باید وارد حساب کاربری شوید.</div>');
-    }
-
-    return mst_sc_wrap_page('support-new', mst_render_ticket_form());
-}
-
-/**
  * SaaS CHAT WRAPPER
  * usage: [mst_ticket_chat]
  * back is hard-wired to page_id=11 for your site
@@ -199,17 +168,11 @@ function mst_sc_ticket_chat($atts = []): string {
         'title' => 'گفتگو',
     ], $atts);
 
-    // Prefer dedicated support list page URL, then legacy support page, then fallback.
-    $back_url = mst_find_page_url_by_shortcode('mst_support_list');
-    if ($back_url === '') {
-        $back_url = mst_find_page_url_by_shortcode('mst_support');
-    }
-    if ($back_url === '') {
-        $back_page_id = 11;
-        $back_url = get_permalink($back_page_id);
-    }
+    // ✅ HARD FIX: Back goes to your tickets page: ?page_id=11
+    $back_page_id = 11;
+    $back_url = get_permalink($back_page_id);
     if (!$back_url) {
-        $back_url = home_url('/');
+        $back_url = home_url('/?page_id=11');
     }
 
     $ticket_id = absint(mst_req('ticket_id'));
@@ -253,13 +216,7 @@ function mst_render_ticket_list(string $new_url = ''): string {
         ARRAY_A
     );
 
-    if ($new_url === '') {
-        $new_url = mst_find_page_url_by_shortcode('mst_support_new');
-    }
-
-    if ($new_url === '') {
-        $new_url = home_url('/');
-    }
+    $new_url = $new_url ?: add_query_arg('view', 'new', remove_query_arg('view'));
 
     // Chat page (by slug). If not found => fallback to page_id=25 (adjust if needed)
     $chat_page = get_page_by_path('ticket-chat');
@@ -320,18 +277,6 @@ function mst_sc_ticket_list(): string {
     if (!is_user_logged_in()) return '';
 
     return mst_sc_wrap_page('list', mst_render_ticket_list());
-}
-
-/**
- * Dedicated support list page
- */
-function mst_sc_support_list(): string {
-
-    if (!is_user_logged_in()) {
-        return mst_sc_wrap_page('support-list', '<div class="mst-alert">برای ارسال تیکت باید وارد حساب کاربری شوید.</div>');
-    }
-
-    return mst_sc_wrap_page('support-list', mst_render_ticket_list());
 }
 
 /**

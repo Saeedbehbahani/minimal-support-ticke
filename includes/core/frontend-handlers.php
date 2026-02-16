@@ -81,14 +81,10 @@ function mst_handle_create_ticket(): void {
     }
 
     $redirect_to = esc_url_raw((string) mst_req('redirect_to'));
-    if (!$redirect_to && function_exists('mst_find_page_url_by_shortcode')) {
-        $redirect_to = mst_find_page_url_by_shortcode('mst_support_list');
-        if (!$redirect_to) {
-            $redirect_to = mst_find_page_url_by_shortcode('mst_support');
-        }
+    if (!$redirect_to) {
+        $redirect_to = add_query_arg('view', 'list', remove_query_arg('view'));
     }
 
-    $redirect_to = wp_validate_redirect($redirect_to, home_url('/'));
     wp_safe_redirect($redirect_to);
     exit;
 }
