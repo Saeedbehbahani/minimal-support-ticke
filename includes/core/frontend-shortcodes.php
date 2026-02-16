@@ -199,11 +199,17 @@ function mst_sc_ticket_chat($atts = []): string {
         'title' => 'گفتگو',
     ], $atts);
 
-    // ✅ HARD FIX: Back goes to your tickets page: ?page_id=11
-    $back_page_id = 11;
-    $back_url = get_permalink($back_page_id);
+    // Prefer dedicated support list page URL, then legacy support page, then fallback.
+    $back_url = mst_find_page_url_by_shortcode('mst_support_list');
+    if ($back_url === '') {
+        $back_url = mst_find_page_url_by_shortcode('mst_support');
+    }
+    if ($back_url === '') {
+        $back_page_id = 11;
+        $back_url = get_permalink($back_page_id);
+    }
     if (!$back_url) {
-        $back_url = home_url('/?page_id=11');
+        $back_url = home_url('/');
     }
 
     $ticket_id = absint(mst_req('ticket_id'));

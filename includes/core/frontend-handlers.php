@@ -87,10 +87,8 @@ function mst_handle_create_ticket(): void {
             $redirect_to = mst_find_page_url_by_shortcode('mst_support');
         }
     }
-    if (!$redirect_to) {
-        $redirect_to = home_url('/');
-    }
 
+    $redirect_to = wp_validate_redirect($redirect_to, home_url('/'));
     wp_safe_redirect($redirect_to);
     exit;
 }
