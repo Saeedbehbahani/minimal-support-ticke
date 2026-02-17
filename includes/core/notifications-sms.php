@@ -2,10 +2,30 @@
 if (!defined('ABSPATH')) exit;
 
 /**
- * Debug logger (only when WP_DEBUG is enabled).
+ * Is SMS debug mode enabled from plugin settings?
+ */
+function mst_sms_debug_enabled(): bool {
+    return (int) mst_opt('sms_debug_mode', 0) === 1;
+}
+
+/**
+ * Absolute path to plugin SMS log file.
+ */
+function mst_sms_debug_log_file_path(): string {
+    $uploads = wp_upload_dir();
+    $base_dir = isset($uploads['basedir']) ? (string) $uploads['basedir'] : '';
+    if ($base_dir === '') {
+        return '';
+    }
+
+    return trailingslashit($base_dir) . 'mst-logs/mst-sms.log';
+}
+
+/**
+ * Debug logger to uploads/mst-logs/mst-sms.log (only when sms_debug_mode is ON).
  */
 function mst_sms_debug_log(string $message, array $context = []): void {
-    if (!defined('WP_DEBUG') || WP_DEBUG !== true) {
+    if (!mst_sms_debug_enabled()) {
         return;
     }
 
@@ -17,7 +37,24 @@ function mst_sms_debug_log(string $message, array $context = []): void {
         }
     }
 
-    error_log('[MST SMS DEBUG] ' . $message . $suffix);
+    $line = sprintf(
+        "[%s] %s%s\n",
+        wp_date('Y-m-d H:i:s'),
+        $message,
+        $suffix
+    );
+
+    $file_path = mst_sms_debug_log_file_path();
+    if ($file_path === '') {
+        return;
+    }
+
+    $log_dir = dirname($file_path);
+    if (!is_dir($log_dir)) {
+        wp_mkdir_p($log_dir);
+    }
+
+    file_put_contents($file_path, $line, FILE_APPEND | LOCK_EX);
 }
 
 /**
@@ -92,10 +129,16 @@ function mst_mark_ticket_sms_sent(int $ticket_id, string $column): void {
  * Send SMS by pattern name (event) with params
  */
 function mst_sms_send_pattern(string $pattern_key, string $to, array $params = []): bool {
-    if (!mst_sms_enabled()) return false;
+    if (!mst_sms_enabled()) {
+        mst_sms_debug_log('Abort SMS send: channel is disabled.', ['event' => $pattern_key]);
+        return false;
+    }
 
     $provider = mst_sms_provider();
-    if (!$provider) return false;
+    if (!$provider) {
+        mst_sms_debug_log('Abort SMS send: provider unavailable.', ['event' => $pattern_key]);
+        return false;
+    }
 
     // pattern mapping from settings
     $patterns = (array) mst_opt('sms_patterns', []);
@@ -120,6 +163,10 @@ function mst_sms_send_pattern(string $pattern_key, string $to, array $params = [
         // We'll implement send_pattern in provider
         return (bool) $provider->send_pattern($to, $pattern_code, $params);
     } catch (\Throwable $e) {
+        mst_sms_debug_log('SMS send threw exception.', [
+            'event'   => $pattern_key,
+            'message' => $e->getMessage(),
+        ]);
         return false;
     }
 }
@@ -139,8 +186,14 @@ function mst_user_mobile(int $user_id): string {
  * EVENT 1: Ticket created -> notify admins
  */
 function mst_notify_ticket_created(int $ticket_id): void {
-    if (!mst_sms_enabled()) return;
-    if (!class_exists('MST_DB')) return;
+    if (!mst_sms_enabled()) {
+        mst_sms_debug_log('Abort ticket_created_admin SMS: channel disabled.', ['ticket_id' => $ticket_id]);
+        return;
+    }
+    if (!class_exists('MST_DB')) {
+        mst_sms_debug_log('Abort ticket_created_admin SMS: MST_DB not loaded.', ['ticket_id' => $ticket_id]);
+        return;
+    }
 
     if ($ticket_id <= 0) {
         mst_sms_debug_log('Abort ticket_created_admin SMS: invalid ticket_id.', [
@@ -151,11 +204,23 @@ function mst_notify_ticket_created(int $ticket_id): void {
     }
 
     $ticket = MST_DB::get_ticket($ticket_id);
-    if (!$ticket) return;
-    if (!empty($ticket['admin_new_ticket_sms_sent'])) return;
+    if (!$ticket) {
+        mst_sms_debug_log('Abort ticket_created_admin SMS: ticket not found.', ['ticket_id' => $ticket_id]);
+        return;
+    }
+    if (!empty($ticket['admin_new_ticket_sms_sent'])) {
+        mst_sms_debug_log('Abort ticket_created_admin SMS: already sent.', [
+            'ticket_id' => $ticket_id,
+            'flag'      => (int) $ticket['admin_new_ticket_sms_sent'],
+        ]);
+        return;
+    }
 
     $admins = mst_admin_phones();
-    if (empty($admins)) return;
+    if (empty($admins)) {
+        mst_sms_debug_log('Abort ticket_created_admin SMS: no admin phones configured.', ['ticket_id' => $ticket_id]);
+        return;
+    }
 
     $params = [
         'token' => (string) $ticket_id,
@@ -186,8 +251,20 @@ function mst_notify_ticket_created(int $ticket_id): void {
  * EVENT 2: Admin replied -> notify user
  */
 function mst_notify_admin_replied(int $ticket_id): void {
-    if (!mst_sms_enabled()) return;
-    if (!class_exists('MST_DB')) return;
+    mst_sms_debug_log('Enter admin_replied_user notification flow.', [
+        'event'     => 'admin_replied_user',
+        'ticket_id' => $ticket_id,
+        'user_id'   => get_current_user_id(),
+    ]);
+
+    if (!mst_sms_enabled()) {
+        mst_sms_debug_log('Abort admin_replied_user SMS: channel disabled.', ['ticket_id' => $ticket_id]);
+        return;
+    }
+    if (!class_exists('MST_DB')) {
+        mst_sms_debug_log('Abort admin_replied_user SMS: MST_DB not loaded.', ['ticket_id' => $ticket_id]);
+        return;
+    }
 
     if ($ticket_id <= 0) {
         mst_sms_debug_log('Abort admin_replied_user SMS: invalid ticket_id.', [
@@ -198,11 +275,42 @@ function mst_notify_admin_replied(int $ticket_id): void {
     }
 
     $ticket = MST_DB::get_ticket($ticket_id);
-    if (!$ticket) return;
-    if (!empty($ticket['user_first_reply_sms_sent'])) return;
+    if (!$ticket) {
+        mst_sms_debug_log('Abort admin_replied_user SMS: ticket not found.', ['ticket_id' => $ticket_id]);
+        return;
+    }
+    if (!empty($ticket['user_first_reply_sms_sent'])) {
+        mst_sms_debug_log('Abort admin_replied_user SMS: first-reply flag already set.', [
+            'ticket_id' => $ticket_id,
+            'flag'      => (int) $ticket['user_first_reply_sms_sent'],
+        ]);
+        return;
+    }
+
+    $is_agent = function_exists('mst_is_ticket_agent_user') ? mst_is_ticket_agent_user() : false;
+    mst_sms_debug_log('Admin reply capability check.', [
+        'ticket_id'              => $ticket_id,
+        'manage_options'         => current_user_can('manage_options'),
+        'manage_mst_tickets'     => current_user_can('manage_mst_tickets'),
+        'mst_manage_tickets'     => current_user_can('mst_manage_tickets'),
+        'is_ticket_agent_result' => $is_agent,
+    ]);
+    if (!$is_agent) {
+        mst_sms_debug_log('Abort admin_replied_user SMS: actor is not admin/agent.', [
+            'ticket_id' => $ticket_id,
+            'user_id'   => get_current_user_id(),
+        ]);
+        return;
+    }
 
     $phone = mst_user_mobile((int) $ticket['user_id']);
-    if (!$phone) return;
+    if (!$phone) {
+        mst_sms_debug_log('Abort admin_replied_user SMS: ticket owner phone not resolved.', [
+            'ticket_id' => $ticket_id,
+            'owner_id'  => (int) $ticket['user_id'],
+        ]);
+        return;
+    }
 
     $params = [
         'token' => (string) $ticket_id,
@@ -219,5 +327,15 @@ function mst_notify_admin_replied(int $ticket_id): void {
     $sent = mst_sms_send_pattern('admin_replied_user', $phone, $params);
     if ($sent) {
         mst_mark_ticket_sms_sent($ticket_id, 'user_first_reply_sms_sent');
+        mst_sms_debug_log('admin_replied_user SMS sent and flag updated.', [
+            'ticket_id' => $ticket_id,
+            'phone'     => $phone,
+        ]);
+        return;
     }
+
+    mst_sms_debug_log('admin_replied_user SMS failed. Flag left unchanged.', [
+        'ticket_id' => $ticket_id,
+        'phone'     => $phone,
+    ]);
 }

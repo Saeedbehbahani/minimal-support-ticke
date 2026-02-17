@@ -34,6 +34,35 @@ function mst_is_ticket_admin(): bool {
 }
 
 /**
+ * Check if current user can act as ticket admin/agent for replies.
+ */
+function mst_is_ticket_agent_user(?WP_User $user = null): bool {
+    if (!$user) {
+        $user = wp_get_current_user();
+    }
+
+    if (!($user instanceof WP_User) || 0 === (int) $user->ID) {
+        return false;
+    }
+
+    $roles = is_array($user->roles) ? $user->roles : [];
+
+    if (current_user_can('manage_options')) {
+        return true;
+    }
+
+    if (in_array('administrator', $roles, true)) {
+        return true;
+    }
+
+    if (current_user_can('manage_mst_tickets') || current_user_can('mst_manage_tickets')) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
  * Safe redirect back
  */
 function mst_redirect_back(string $fallback = ''): void {
