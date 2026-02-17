@@ -372,10 +372,6 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
 
         <header class="mst-chat-header">
             <a class="mst-chat-header__back" href="<?php echo esc_url($back_url); ?>">← بازگشت</a>
-
-            <div class="mst-chat-header__title-wrap">
-                <strong class="mst-chat-header__title">پشتیبانی</strong>
-            </div>
         </header>
 
         <div class="mst-chat-system-bar">
