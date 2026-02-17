@@ -317,9 +317,11 @@ function mst_notify_ticket_created(int $ticket_id): void {
         return;
     }
     if (!empty($ticket['admin_new_ticket_sms_sent'])) {
-        mst_sms_debug_log('Abort ticket_created_admin SMS: already sent.', [
-            'ticket_id' => $ticket_id,
-            'flag'      => (int) $ticket['admin_new_ticket_sms_sent'],
+        mst_sms_debug_log('Skip SMS due to flag guard (already sent).', [
+            'event'             => 'ticket_created_admin',
+            'ticket_id'         => $ticket_id,
+            'prevented_by_flag' => 'admin_new_ticket_sms_sent',
+            'flag_value'        => (int) $ticket['admin_new_ticket_sms_sent'],
         ]);
         return;
     }
@@ -388,9 +390,11 @@ function mst_notify_admin_replied(int $ticket_id): void {
         return;
     }
     if (!empty($ticket['user_first_reply_sms_sent'])) {
-        mst_sms_debug_log('Abort admin_replied_user SMS: first-reply flag already set.', [
-            'ticket_id' => $ticket_id,
-            'flag'      => (int) $ticket['user_first_reply_sms_sent'],
+        mst_sms_debug_log('Skip SMS due to flag guard (already sent).', [
+            'event'             => 'admin_replied_user',
+            'ticket_id'         => $ticket_id,
+            'prevented_by_flag' => 'user_first_reply_sms_sent',
+            'flag_value'        => (int) $ticket['user_first_reply_sms_sent'],
         ]);
         return;
     }
