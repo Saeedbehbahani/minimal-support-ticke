@@ -15,6 +15,7 @@ function mst_admin_render_settings(): void {
         'sms_sender'     => '',
         'sms_base_url'   => '',
         'sms_debug_mode' => 0,
+        'mst_login_page_id' => 0,
 
         // pattern codes
         'sms_patterns'   => [
@@ -41,6 +42,7 @@ function mst_admin_render_settings(): void {
         $sms_sender   = sanitize_text_field((string)($_POST['sms_sender'] ?? ''));
         $sms_base_url = esc_url_raw((string)($_POST['sms_base_url'] ?? ''));
         $sms_debug_mode = empty($_POST['sms_debug_mode']) ? 0 : 1;
+        $mst_login_page_id = absint($_POST['mst_login_page_id'] ?? 0);
 
         $patterns_in = $_POST['sms_patterns'] ?? [];
         if (!is_array($patterns_in)) $patterns_in = [];
@@ -57,6 +59,7 @@ function mst_admin_render_settings(): void {
             'sms_sender'     => $sms_sender,
             'sms_base_url'   => $sms_base_url,
             'sms_debug_mode' => $sms_debug_mode,
+            'mst_login_page_id' => $mst_login_page_id,
             'sms_patterns'   => $patterns,
         ];
 
@@ -133,6 +136,14 @@ function mst_admin_render_settings(): void {
                             <input type="checkbox" name="sms_debug_mode" value="1" <?php checked((int) $opts['sms_debug_mode'], 1); ?>>
                             فعال‌سازی لاگ پیامکی در wp-content/uploads/mst-logs/mst-sms.log
                         </label>
+                    </td>
+                </tr>
+
+                <tr>
+                    <th scope="row">Login Page (Optional)</th>
+                    <td>
+                        <input type="number" min="0" name="mst_login_page_id" value="<?php echo esc_attr((string) absint($opts['mst_login_page_id'])); ?>" class="regular-text" placeholder="Page ID">
+                        <p class="description">اگر برگه ورود سفارشی دارید، Page ID را وارد کنید تا ورود کاربران همیشه به همان صفحه هدایت شود.</p>
                     </td>
                 </tr>
             </table>

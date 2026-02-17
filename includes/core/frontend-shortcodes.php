@@ -27,6 +27,8 @@ function mst_register_shortcodes(): void {
  * Global sticky CTA renderer (outside content/footer wrappers)
  */
 function mst_render_sticky_new_ticket_button(): void {
+    if (!is_user_logged_in()) return;
+
     // STRICT: show ONLY on [mst_support_list]
     if (!mst_is_support_list_page()) return;
 
@@ -141,12 +143,33 @@ function mst_status_icon(string $status): string {
     return '<svg class="mst-status-icon mst-status-icon--attention" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="7" fill="none" stroke="#FF3B30" stroke-width="1.8"/><path d="M10 6.3v5.1" fill="none" stroke="#FF3B30" stroke-width="1.8" stroke-linecap="round"/><circle cx="10" cy="13.6" r="0.9" fill="#FF3B30"/></svg>';
 }
 
+
+/**
+ * Guest login gate block for all MST shortcodes.
+ */
+function mst_render_login_gate(): string {
+    $message = 'برای ارسال تیکت و درخواست پشتیبانی باید وارد حساب کاربری خود شوید، از دکمه زیر برای ورود استفاده کنید';
+    $label = 'ورود به سایت';
+
+    $message = (string) apply_filters('mst_login_message', $message);
+    $label = (string) apply_filters('mst_login_button_label', $label);
+
+    $login_url = mst_get_login_url(mst_current_url());
+
+    return sprintf(
+        '<div class="mst-login-gate"><div class="mst-login-gate__inner"><p class="mst-login-gate__msg">%1$s</p><a class="mst-login-gate__btn" href="%2$s">%3$s</a></div></div>',
+        esc_html($message),
+        esc_url($login_url),
+        esc_html($label)
+    );
+}
+
 /**
  * Support page with view switcher (list/new)
  */
 function mst_sc_support(): string {
     if (!is_user_logged_in()) {
-        return mst_sc_wrap_page('support', '<div class="mst-alert">برای ارسال تیکت باید وارد حساب کاربری شوید.</div>');
+        return mst_render_login_gate();
     }
 
     $view = sanitize_key((string) mst_req('view', 'list'));
@@ -228,7 +251,7 @@ function mst_render_ticket_form(string $list_url = ''): string {
 function mst_sc_ticket_form(): string {
 
     if (!is_user_logged_in()) {
-        return mst_sc_wrap_page('form', '<div class="mst-alert">برای ارسال تیکت باید وارد حساب کاربری شوید.</div>');
+        return mst_render_login_gate();
     }
 
     return mst_sc_wrap_page('form', mst_render_ticket_form());
@@ -239,6 +262,10 @@ function mst_sc_ticket_form(): string {
  * usage: [mst_ticket_chat]
  */
 function mst_sc_ticket_chat($atts = []): string {
+
+    if (!is_user_logged_in()) {
+        return mst_render_login_gate();
+    }
 
     $ticket_id = absint(mst_req('ticket_id'));
 
@@ -331,7 +358,7 @@ function mst_render_ticket_list(): string {
  */
 function mst_sc_ticket_list(): string {
 
-    if (!is_user_logged_in()) return '';
+    if (!is_user_logged_in()) return mst_render_login_gate();
 
     return mst_sc_wrap_page('list', mst_render_ticket_list());
 }
@@ -351,7 +378,7 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
         $atts = [];
     }
 
-    if (!is_user_logged_in()) return '';
+    if (!is_user_logged_in()) return mst_render_login_gate();
 
     $ticket_id = absint(mst_req('ticket_id'));
     if (!$ticket_id) return '';

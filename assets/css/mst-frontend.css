@@ -1033,3 +1033,59 @@
   .mst-chat-page { max-width: 100%; }
   .mst-chat-page .mst-message { max-inline-size: 92%; }
 }
+
+.mst-login-gate {
+  inline-size: min(100%, 560px);
+  margin-inline: auto;
+  padding-block: 14px;
+  padding-inline: 10px;
+  font-family: inherit;
+}
+
+.mst-login-gate__inner {
+  border: 1px solid var(--mst-border-light);
+  border-radius: 14px;
+  background: var(--mst-surface-subtle);
+  padding-block: 18px;
+  padding-inline: 16px;
+  text-align: center;
+  display: grid;
+  gap: 14px;
+}
+
+.mst-login-gate__msg {
+  margin: 0;
+  color: var(--mst-text-secondary);
+  line-height: 1.8;
+}
+
+.mst-login-gate__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 240px;
+  max-inline-size: 280px;
+  margin-inline: auto;
+  border: 1px solid var(--mst-border-strong);
+  border-radius: 12px;
+  padding-block: 11px;
+  padding-inline: 16px;
+  background: #fff;
+  color: var(--mst-text-primary);
+  text-decoration: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.mst-login-gate__btn:hover,
+.mst-login-gate__btn:focus-visible {
+  background: #f7f7f7;
+  border-color: #d7d7d7;
+}
+
+@media (max-width: 767px) {
+  .mst-login-gate__btn {
+    inline-size: 100%;
+    max-inline-size: none;
+    min-inline-size: 0;
+  }
+}

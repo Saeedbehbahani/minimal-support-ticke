@@ -280,6 +280,77 @@ function mst_get_new_ticket_url(): string {
 }
 
 /**
+ * Current URL helper (front-end safe)
+ */
+function mst_current_url(): string {
+    $request_uri = isset($_SERVER['REQUEST_URI']) ? (string) wp_unslash($_SERVER['REQUEST_URI']) : '/';
+    $request_uri = '/' . ltrim($request_uri, '/');
+
+    return home_url($request_uri);
+}
+
+/**
+ * Append redirect_to param when needed.
+ */
+function mst_append_redirect_to_url(string $url, string $redirect_url): string {
+    if ($url === '') {
+        return $url;
+    }
+
+    if ($redirect_url === '') {
+        return $url;
+    }
+
+    $existing_redirect = wp_parse_url($url, PHP_URL_QUERY);
+    if (is_string($existing_redirect) && strpos($existing_redirect, 'redirect_to=') !== false) {
+        return $url;
+    }
+
+    return add_query_arg('redirect_to', $redirect_url, $url);
+}
+
+/**
+ * Resolve login URL for all supported site configurations.
+ */
+function mst_get_login_url(string $redirect_url): string {
+    $redirect_url = $redirect_url !== '' ? wp_validate_redirect($redirect_url, home_url('/')) : home_url('/');
+    $url = '';
+
+    if (function_exists('wc_get_page_permalink') && function_exists('wc_get_page_id')) {
+        $myaccount_id = (int) wc_get_page_id('myaccount');
+        if ($myaccount_id > 0) {
+            $wc_url = wc_get_page_permalink('myaccount');
+            if (is_string($wc_url) && $wc_url !== '') {
+                $url = $wc_url;
+            }
+        }
+    }
+
+    if ($url === '') {
+        $opts = get_option('mst_settings', []);
+        $opts = is_array($opts) ? $opts : [];
+        $page_id = isset($opts['mst_login_page_id']) ? absint($opts['mst_login_page_id']) : 0;
+
+        if ($page_id > 0) {
+            $custom_url = get_permalink($page_id);
+            if (is_string($custom_url) && $custom_url !== '') {
+                $url = $custom_url;
+            }
+        }
+    }
+
+    if ($url === '') {
+        $url = wp_login_url($redirect_url);
+    } else {
+        $url = mst_append_redirect_to_url($url, $redirect_url);
+    }
+
+    $url = apply_filters('mst_login_url', $url, $redirect_url);
+
+    return is_string($url) && $url !== '' ? $url : wp_login_url($redirect_url);
+}
+
+/**
  * Detect support list page by shortcode presence on singular pages.
  */
 function mst_is_support_list_page(): bool {
