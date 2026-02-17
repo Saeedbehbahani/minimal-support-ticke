@@ -526,6 +526,7 @@
   gap: 10px;
   direction: rtl;
   flex-direction: row-reverse;
+  color: #ffffff !important;
 }
 
 .mst-sticky-new-ticket .mst-btn-icon{
@@ -537,6 +538,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: #ffffff !important;
 }
 
 .mst-sticky-new-ticket .mst-btn-text{
