@@ -20,6 +20,125 @@ function mst_page_has_shortcodes(array $shortcodes): bool {
 }
 
 /**
+ * Resolve all runtime-registered shortcodes that belong to MST.
+ *
+ * Preferred ownership check: callback source file inside MST_PATH.
+ * Fallback ownership check: shortcode tag prefix "mst_".
+ */
+function mst_get_plugin_shortcodes(): array {
+    static $cache = null;
+
+    if (is_array($cache)) {
+        return $cache;
+    }
+
+    global $shortcode_tags;
+    $cache = [];
+
+    if (!is_array($shortcode_tags) || empty($shortcode_tags)) {
+        return $cache;
+    }
+
+    $plugin_base = wp_normalize_path((string) realpath(MST_PATH));
+
+    foreach ($shortcode_tags as $tag => $callback) {
+        if (!is_string($tag) || $tag === '') {
+            continue;
+        }
+
+        $belongs_to_plugin = false;
+
+        try {
+            $ref = null;
+
+            if (is_string($callback) && function_exists($callback)) {
+                $ref = new ReflectionFunction($callback);
+            } elseif ($callback instanceof Closure) {
+                $ref = new ReflectionFunction($callback);
+            } elseif (is_array($callback) && count($callback) === 2) {
+                $target = $callback[0];
+                $method = $callback[1];
+
+                if ((is_object($target) || is_string($target)) && is_string($method) && method_exists($target, $method)) {
+                    $ref = new ReflectionMethod($target, $method);
+                }
+            }
+
+            if ($ref) {
+                $file = $ref->getFileName();
+                if (is_string($file) && $file !== '') {
+                    $file_path = wp_normalize_path((string) realpath($file));
+                    if ($plugin_base && $file_path && strpos($file_path, $plugin_base) === 0) {
+                        $belongs_to_plugin = true;
+                    }
+                }
+            }
+        } catch (Throwable $e) {
+            // Ignore reflection errors and allow fallback ownership check.
+        }
+
+        if (!$belongs_to_plugin && strpos($tag, 'mst_') === 0) {
+            $belongs_to_plugin = true;
+        }
+
+        if ($belongs_to_plugin) {
+            $cache[] = $tag;
+        }
+    }
+
+    $cache = array_values(array_unique($cache));
+    return $cache;
+}
+
+/**
+ * Detect whether current singular content contains any MST shortcode.
+ */
+function mst_current_post_has_plugin_shortcode(): bool {
+    if (is_admin() || !is_singular()) return false;
+
+    $post = get_post();
+    if (!($post instanceof WP_Post)) return false;
+
+    $content = (string) $post->post_content;
+    if ($content === '') return false;
+
+    $shortcodes = mst_get_plugin_shortcodes();
+    if (empty($shortcodes)) return false;
+
+    $regex = get_shortcode_regex($shortcodes);
+    return (bool) preg_match('/' . $regex . '/s', $content);
+}
+
+/**
+ * Add fullscreen class when current content has MST shortcodes.
+ */
+function mst_filter_body_class_for_shortcode_pages(array $classes): array {
+    if (mst_current_post_has_plugin_shortcode()) {
+        $classes[] = 'mst-fullscreen';
+    }
+    return array_values(array_unique($classes));
+}
+
+/**
+ * Hide theme/footer containers only on shortcode pages.
+ */
+function mst_print_fullscreen_footer_css(): void {
+    if (!mst_current_post_has_plugin_shortcode()) {
+        return;
+    }
+
+    echo '<style id="mst-fullscreen-footer-hide">';
+    echo 'body.mst-fullscreen footer,';
+    echo 'body.mst-fullscreen .site-footer,';
+    echo 'body.mst-fullscreen #colophon,';
+    echo 'body.mst-fullscreen .footer,';
+    echo 'body.mst-fullscreen .elementor-location-footer{display:none!important;}';
+    echo 'body.mst-fullscreen{margin-bottom:0!important;padding-bottom:0!important;min-height:100vh;}';
+    echo 'body.mst-fullscreen #page,body.mst-fullscreen .site,body.mst-fullscreen .site-content{margin-bottom:0!important;padding-bottom:0!important;min-height:100vh;}';
+    echo '</style>';
+}
+
+/**
  * Current user id helper
  */
 function mst_user_id(): int {
