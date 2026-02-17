@@ -183,6 +183,114 @@ function mst_user_mobile(int $user_id): string {
 }
 
 /**
+ * Normalize Iranian mobile numbers to 09XXXXXXXXX format.
+ */
+function mst_normalize_iranian_phone(string $raw): string {
+    $raw = trim($raw);
+    if ($raw === '') {
+        return '';
+    }
+
+    $has_plus = strpos($raw, '+') === 0;
+    $digits = preg_replace('/\D+/', '', $raw);
+    if (!is_string($digits) || $digits === '') {
+        return '';
+    }
+
+    $phone = $has_plus ? ('+' . $digits) : $digits;
+    if (strpos($phone, '+98') === 0) {
+        $phone = '0' . substr($phone, 3);
+    } elseif (strpos($phone, '0098') === 0) {
+        $phone = '0' . substr($phone, 4);
+    } elseif (strpos($phone, '98') === 0) {
+        $phone = '0' . substr($phone, 2);
+    }
+
+    if (!preg_match('/^09\d{9}$/', $phone)) {
+        return '';
+    }
+
+    return $phone;
+}
+
+/**
+ * Mask potential phone value for debug logs.
+ */
+function mst_mask_phone_value(string $value): string {
+    $value = trim($value);
+    if ($value === '') {
+        return '';
+    }
+
+    $len = strlen($value);
+    if ($len <= 4) {
+        return str_repeat('*', $len);
+    }
+
+    return substr($value, 0, 3) . str_repeat('*', max(1, $len - 5)) . substr($value, -2);
+}
+
+/**
+ * Resolve user phone by checking common meta keys and username fallback.
+ */
+function mst_resolve_user_phone(int $user_id): string {
+    $meta_keys = [
+        'digits_phone', 'digits_mobile', 'digits_phonenumber', 'digits_user_phone',
+        'mobile', 'user_mobile', 'phone', 'user_phone',
+        'billing_phone',
+    ];
+
+    $checked_values = [];
+    $resolved_phone = '';
+    $resolved_source = '';
+
+    foreach ($meta_keys as $meta_key) {
+        $raw_value = (string) get_user_meta($user_id, $meta_key, true);
+        $checked_values[$meta_key] = mst_mask_phone_value($raw_value);
+        $normalized = mst_normalize_iranian_phone($raw_value);
+        if ($normalized !== '') {
+            $resolved_phone = $normalized;
+            $resolved_source = 'user_meta:' . $meta_key;
+            break;
+        }
+    }
+
+    $user = get_userdata($user_id);
+    $login_masked = '';
+    if ($user && !empty($user->user_login)) {
+        $login_raw = (string) $user->user_login;
+        $login_masked = mst_mask_phone_value($login_raw);
+
+        if ($resolved_phone === '') {
+            $login_normalized = mst_normalize_iranian_phone($login_raw);
+            if ($login_normalized !== '') {
+                $resolved_phone = $login_normalized;
+                $resolved_source = 'user_login';
+            }
+        }
+    }
+
+    $context = [
+        'checked_meta' => $checked_values,
+        'checked_keys' => $meta_keys,
+        'user_login'   => $login_masked,
+        'source'       => $resolved_source,
+    ];
+
+    $filtered_phone = apply_filters('mst_user_phone', $resolved_phone, $user_id, $context);
+    if (!is_string($filtered_phone)) {
+        $filtered_phone = '';
+    }
+
+    $resolved_phone = mst_normalize_iranian_phone($filtered_phone);
+    $context['source'] = ($resolved_phone !== '' && $context['source'] === '') ? 'filter' : $context['source'];
+
+    $GLOBALS['mst_last_phone_resolution'] = $context;
+
+    return $resolved_phone;
+}
+
+/**
  * EVENT 1: Ticket created -> notify admins
  */
 function mst_notify_ticket_created(int $ticket_id): void {
@@ -303,11 +411,19 @@ function mst_notify_admin_replied(int $ticket_id): void {
         return;
     }
 
-    $phone = mst_user_mobile((int) $ticket['user_id']);
+    $owner_id = (int) $ticket['user_id'];
+    $phone = mst_resolve_user_phone($owner_id);
     if (!$phone) {
+        $resolution_context = isset($GLOBALS['mst_last_phone_resolution']) && is_array($GLOBALS['mst_last_phone_resolution'])
+            ? $GLOBALS['mst_last_phone_resolution']
+            : [];
+
         mst_sms_debug_log('Abort admin_replied_user SMS: ticket owner phone not resolved.', [
             'ticket_id' => $ticket_id,
-            'owner_id'  => (int) $ticket['user_id'],
+            'owner_id'  => $owner_id,
+            'checked_keys' => $resolution_context['checked_keys'] ?? [],
+            'checked_meta' => $resolution_context['checked_meta'] ?? [],
+            'user_login' => $resolution_context['user_login'] ?? '',
         ]);
         return;
     }
