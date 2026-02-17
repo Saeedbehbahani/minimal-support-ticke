@@ -461,7 +461,6 @@
   bottom: calc(140px + env(safe-area-inset-bottom, 0px)) !important;
   z-index: 2147483647 !important;
   pointer-events: none;
-
   display: flex;
   justify-content: center;
 }
@@ -478,6 +477,11 @@
 }
 
 .mst-sticky-new-ticket{
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+  margin-inline: auto;
   pointer-events: auto;
   z-index: 2147483647;
   width: 100%;
@@ -531,8 +535,10 @@
   color: #ffffff !important;
 }
 
-@media (max-width: 480px){
-  .mst-sticky-new-ticket{ max-width: 100%; }
+@media (max-width: 767px){
+  .mst-sticky-new-ticket{
+    width: calc(100vw - 20px);
+  }
 }
 
 .mst-badge {
