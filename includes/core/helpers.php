@@ -161,7 +161,7 @@ function mst_get_new_ticket_url(): string {
 }
 
 /**
- * Detect support list pages by shortcode presence on singular pages.
+ * Detect support list page by shortcode presence on singular pages.
  */
 function mst_is_support_list_page(): bool {
     if (!is_singular()) return false;
