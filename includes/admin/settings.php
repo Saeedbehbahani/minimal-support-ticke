@@ -14,6 +14,7 @@ function mst_admin_render_settings(): void {
         'sms_api_key'    => '',
         'sms_sender'     => '',
         'sms_base_url'   => '',
+        'sms_debug_mode' => 0,
 
         // pattern codes
         'sms_patterns'   => [
@@ -39,6 +40,7 @@ function mst_admin_render_settings(): void {
         $sms_api_key  = sanitize_text_field((string)($_POST['sms_api_key'] ?? ''));
         $sms_sender   = sanitize_text_field((string)($_POST['sms_sender'] ?? ''));
         $sms_base_url = esc_url_raw((string)($_POST['sms_base_url'] ?? ''));
+        $sms_debug_mode = empty($_POST['sms_debug_mode']) ? 0 : 1;
 
         $patterns_in = $_POST['sms_patterns'] ?? [];
         if (!is_array($patterns_in)) $patterns_in = [];
@@ -54,6 +56,7 @@ function mst_admin_render_settings(): void {
             'sms_api_key'    => $sms_api_key,
             'sms_sender'     => $sms_sender,
             'sms_base_url'   => $sms_base_url,
+            'sms_debug_mode' => $sms_debug_mode,
             'sms_patterns'   => $patterns,
         ];
 
@@ -122,6 +125,16 @@ function mst_admin_render_settings(): void {
                         <input type="text" name="sms_base_url" value="<?php echo esc_attr($opts['sms_base_url']); ?>" class="regular-text" placeholder="اگر Provider شما نیاز دارد">
                     </td>
                 </tr>
+
+                <tr>
+                    <th scope="row">SMS Debug Mode</th>
+                    <td>
+                        <label>
+                            <input type="checkbox" name="sms_debug_mode" value="1" <?php checked((int) $opts['sms_debug_mode'], 1); ?>>
+                            فعال‌سازی لاگ پیامکی در wp-content/uploads/mst-logs/mst-sms.log
+                        </label>
+                    </td>
+                </tr>
             </table>
 
             <hr>
@@ -144,6 +157,25 @@ function mst_admin_render_settings(): void {
                     </td>
                 </tr>
             </table>
+
+            <?php if ((int) $opts['sms_debug_mode'] === 1 && function_exists('mst_sms_debug_log_file_path')): ?>
+                <?php
+                $log_path = mst_sms_debug_log_file_path();
+                $log_tail = '';
+
+                if (is_string($log_path) && $log_path !== '' && file_exists($log_path)) {
+                    $lines = @file($log_path, FILE_IGNORE_NEW_LINES);
+                    if (is_array($lines)) {
+                        $last_lines = array_slice($lines, -300);
+                        $log_tail = implode("\n", $last_lines);
+                    }
+                }
+                ?>
+                <hr>
+                <h2>SMS Debug Log Viewer</h2>
+                <p class="description">آخرین حدود ۳۰۰ خط از لاگ محلی.</p>
+                <pre style="background:#fff;border:1px solid #ccd0d4;padding:12px;max-height:380px;overflow:auto;"><?php echo esc_html($log_tail !== '' ? $log_tail : 'No logs yet.'); ?></pre>
+            <?php endif; ?>
 
             <p>
                 <button type="submit" name="mst_settings_submit" value="1" class="button button-primary">

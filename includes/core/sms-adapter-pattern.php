@@ -72,6 +72,7 @@ class MST_SMS_Adapter_Pattern {
             mst_sms_debug_log('Kavenegar request body prepared.', [
                 'endpoint' => $endpoint,
                 'body'     => $body,
+                'pattern'  => $pattern_code,
                 'encoded'  => http_build_query($body, '', '&'),
             ]);
         }
@@ -90,6 +91,7 @@ class MST_SMS_Adapter_Pattern {
         if (is_wp_error($response)) {
             if (function_exists('mst_sms_debug_log')) {
                 mst_sms_debug_log('Kavenegar request failed with WP_Error.', [
+                    'pattern' => $pattern_code,
                     'error' => $response->get_error_message(),
                 ]);
             }
@@ -108,6 +110,7 @@ class MST_SMS_Adapter_Pattern {
                 'http_code'       => $code,
                 'raw_body'        => $res_body,
                 'return_status'   => $return_status,
+                'pattern'         => $pattern_code,
                 'return_message'  => $return_message,
             ]);
         }
@@ -124,6 +127,7 @@ class MST_SMS_Adapter_Pattern {
         if (function_exists('mst_sms_debug_log')) {
             mst_sms_debug_log('Kavenegar returned non-success status.', [
                 'return_status'  => $return_status,
+                'pattern'        => $pattern_code,
                 'return_message' => $return_message,
             ]);
         }

@@ -25,6 +25,17 @@ function mst_admin_render_ticket_view(): void {
         check_admin_referer('mst_admin_reply', '_mst_nonce');
 
         $reply_ticket_id = absint($_POST['ticket_id'] ?? $ticket_id);
+        if (function_exists('mst_sms_debug_log')) {
+            mst_sms_debug_log('Admin reply handler entered.', [
+                'ticket_id'           => $reply_ticket_id,
+                'user_id'             => get_current_user_id(),
+                'manage_options'      => current_user_can('manage_options'),
+                'manage_mst_tickets'  => current_user_can('manage_mst_tickets'),
+                'mst_manage_tickets'  => current_user_can('mst_manage_tickets'),
+                'is_ticket_agent'     => function_exists('mst_is_ticket_agent_user') ? mst_is_ticket_agent_user() : false,
+            ]);
+        }
+
         if ($reply_ticket_id <= 0) {
             if (function_exists('mst_sms_debug_log')) {
                 mst_sms_debug_log('Abort admin reply SMS flow: invalid ticket_id in reply handler.', [
@@ -36,15 +47,16 @@ function mst_admin_render_ticket_view(): void {
             exit;
         }
 
+        $redirect_url = admin_url('admin.php?page=mst_ticket_view&ticket_id=' . $reply_ticket_id);
         $msg = sanitize_textarea_field(mst_req('message'));
-        if ($msg !== '') {
 
+        if ($msg !== '') {
             $now = current_time('mysql');
 
             $attachments = mst_handle_attachments_upload();
             $attachments_json = mst_attachments_to_json($attachments);
 
-            $wpdb->insert($messages, [
+            $inserted = $wpdb->insert($messages, [
                 'ticket_id'   => $reply_ticket_id,
                 'sender_role' => 'admin',
                 'sender_id'   => get_current_user_id(),
@@ -53,19 +65,48 @@ function mst_admin_render_ticket_view(): void {
                 'created_at'  => $now,
             ]);
 
-            // update ticket status to answered by default when admin replies
-            $wpdb->update($tickets, [
-                'admin_id'    => get_current_user_id(),
-                'status'      => 'answered',
-                'updated_at'  => $now,
-            ], ['id' => $reply_ticket_id]);
+            if (function_exists('mst_sms_debug_log')) {
+                mst_sms_debug_log('Admin reply insert result.', [
+                    'ticket_id'       => $reply_ticket_id,
+                    'insert_result'   => $inserted,
+                    'insert_id'       => (int) $wpdb->insert_id,
+                    'db_last_error'   => $wpdb->last_error,
+                ]);
+            }
 
-            if (function_exists('mst_notify_admin_replied')) {
-                mst_notify_admin_replied($reply_ticket_id);
+            if ($inserted !== false) {
+                // update ticket status to answered by default when admin replies
+                $wpdb->update($tickets, [
+                    'admin_id'    => get_current_user_id(),
+                    'status'      => 'answered',
+                    'updated_at'  => $now,
+                ], ['id' => $reply_ticket_id]);
+
+                if (function_exists('mst_notify_admin_replied')) {
+                    try {
+                        mst_notify_admin_replied($reply_ticket_id);
+                    } catch (\Throwable $e) {
+                        if (function_exists('mst_sms_debug_log')) {
+                            mst_sms_debug_log('Admin reply notification failed with exception.', [
+                                'ticket_id' => $reply_ticket_id,
+                                'message'   => $e->getMessage(),
+                            ]);
+                        }
+                    }
+                }
+
+                $redirect_url = add_query_arg('sent', '1', $redirect_url);
             }
         }
 
-        wp_safe_redirect(admin_url('admin.php?page=mst_ticket_view&ticket_id=' . $reply_ticket_id));
+        if (function_exists('mst_sms_debug_log')) {
+            mst_sms_debug_log('Admin reply handler redirecting.', [
+                'ticket_id'     => $reply_ticket_id,
+                'redirect_url'  => $redirect_url,
+            ]);
+        }
+
+        wp_safe_redirect($redirect_url);
         exit;
     }
 
@@ -97,6 +138,10 @@ function mst_admin_render_ticket_view(): void {
     ?>
     <div class="wrap">
         <h1>تیکت #<?php echo esc_html($ticket_id); ?></h1>
+
+        <?php if (!empty($_GET['sent'])): ?>
+            <div class="notice notice-success is-dismissible"><p>پاسخ با موفقیت ثبت شد.</p></div>
+        <?php endif; ?>
 
         <div style="margin:10px 0; padding:12px; background:#fff; border:1px solid #e5e5e5; border-radius:8px;">
             <div><strong>کاربر:</strong> <?php echo esc_html($user_label); ?></div>
