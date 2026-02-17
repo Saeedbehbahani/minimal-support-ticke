@@ -1,6 +1,111 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
+function mst_get_auth_settings_defaults(): array {
+    return [
+        'login_display_mode' => 'url',
+        'login_url' => '',
+        'login_page_id' => 0,
+        'login_shortcode' => '',
+        'login_button_text' => 'ورود به سایت',
+        'login_helper_text' => '',
+    ];
+}
+
+function mst_register_auth_settings_fields(): void {
+    register_setting('mst_settings_auth_group', 'mst_settings', [
+        'type' => 'array',
+        'sanitize_callback' => 'mst_sanitize_auth_settings_option',
+        'default' => mst_get_auth_settings_defaults(),
+    ]);
+
+    add_settings_section(
+        'mst_auth_login_section',
+        'Authentication / Login',
+        '__return_empty_string',
+        'mst_settings_auth'
+    );
+
+    add_settings_field('login_display_mode', 'Login Display Mode', 'mst_render_field_login_display_mode', 'mst_settings_auth', 'mst_auth_login_section');
+    add_settings_field('login_url', 'Login URL', 'mst_render_field_login_url', 'mst_settings_auth', 'mst_auth_login_section');
+    add_settings_field('login_page_id', 'Login Page', 'mst_render_field_login_page_id', 'mst_settings_auth', 'mst_auth_login_section');
+    add_settings_field('login_shortcode', 'Login Shortcode', 'mst_render_field_login_shortcode', 'mst_settings_auth', 'mst_auth_login_section');
+    add_settings_field('login_button_text', 'Login Button Text', 'mst_render_field_login_button_text', 'mst_settings_auth', 'mst_auth_login_section');
+    add_settings_field('login_helper_text', 'Login Helper Text', 'mst_render_field_login_helper_text', 'mst_settings_auth', 'mst_auth_login_section');
+}
+add_action('admin_init', 'mst_register_auth_settings_fields');
+
+function mst_sanitize_auth_settings_option($input): array {
+    $existing = get_option('mst_settings', []);
+    $existing = is_array($existing) ? $existing : [];
+    $defaults = mst_get_auth_settings_defaults();
+    $input = is_array($input) ? $input : [];
+
+    $mode = sanitize_key((string) ($input['login_display_mode'] ?? $defaults['login_display_mode']));
+    if (!in_array($mode, ['url', 'page', 'shortcode'], true)) {
+        $mode = $defaults['login_display_mode'];
+    }
+
+    $auth = [
+        'login_display_mode' => $mode,
+        'login_url' => esc_url_raw((string) ($input['login_url'] ?? '')),
+        'login_page_id' => absint($input['login_page_id'] ?? 0),
+        'login_shortcode' => wp_kses_post((string) ($input['login_shortcode'] ?? '')),
+        'login_button_text' => sanitize_text_field((string) ($input['login_button_text'] ?? $defaults['login_button_text'])),
+        'login_helper_text' => sanitize_text_field((string) ($input['login_helper_text'] ?? '')),
+    ];
+
+    return array_merge($existing, $auth);
+}
+
+function mst_get_auth_settings_values(): array {
+    $opts = get_option('mst_settings', []);
+    $opts = is_array($opts) ? $opts : [];
+
+    return wp_parse_args($opts, mst_get_auth_settings_defaults());
+}
+
+function mst_render_field_login_display_mode(): void {
+    $opts = mst_get_auth_settings_values();
+    ?>
+    <fieldset>
+        <label><input type="radio" name="mst_settings[login_display_mode]" value="url" <?php checked($opts['login_display_mode'], 'url'); ?>> URL</label><br>
+        <label><input type="radio" name="mst_settings[login_display_mode]" value="page" <?php checked($opts['login_display_mode'], 'page'); ?>> Page</label><br>
+        <label><input type="radio" name="mst_settings[login_display_mode]" value="shortcode" <?php checked($opts['login_display_mode'], 'shortcode'); ?>> Shortcode</label>
+    </fieldset>
+    <?php
+}
+
+function mst_render_field_login_url(): void {
+    $opts = mst_get_auth_settings_values();
+    echo '<input type="url" class="regular-text" name="mst_settings[login_url]" value="' . esc_attr((string) $opts['login_url']) . '" placeholder="https://example.com/login">';
+}
+
+function mst_render_field_login_page_id(): void {
+    $opts = mst_get_auth_settings_values();
+    wp_dropdown_pages([
+        'name' => 'mst_settings[login_page_id]',
+        'selected' => absint($opts['login_page_id']),
+        'show_option_none' => '— Select —',
+        'option_none_value' => '0',
+    ]);
+}
+
+function mst_render_field_login_shortcode(): void {
+    $opts = mst_get_auth_settings_values();
+    echo '<textarea class="large-text" rows="4" name="mst_settings[login_shortcode]">' . esc_textarea((string) $opts['login_shortcode']) . '</textarea>';
+}
+
+function mst_render_field_login_button_text(): void {
+    $opts = mst_get_auth_settings_values();
+    echo '<input type="text" class="regular-text" name="mst_settings[login_button_text]" value="' . esc_attr((string) $opts['login_button_text']) . '">';
+}
+
+function mst_render_field_login_helper_text(): void {
+    $opts = mst_get_auth_settings_values();
+    echo '<input type="text" class="regular-text" name="mst_settings[login_helper_text]" value="' . esc_attr((string) $opts['login_helper_text']) . '">';
+}
+
 function mst_admin_render_settings(): void {
     if (!mst_is_ticket_admin()) wp_die('Access denied', 403);
 
@@ -194,6 +299,16 @@ function mst_admin_render_settings(): void {
                 </button>
                 <a class="button" href="<?php echo esc_url(admin_url('admin.php?page=mst_test_sms')); ?>">رفتن به تست پیامک</a>
             </p>
+        </form>
+
+        <hr>
+
+        <form method="post" action="options.php">
+            <?php
+            settings_fields('mst_settings_auth_group');
+            do_settings_sections('mst_settings_auth');
+            submit_button('ذخیره تنظیمات ورود');
+            ?>
         </form>
     </div>
     <?php

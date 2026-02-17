@@ -310,11 +310,99 @@ function mst_append_redirect_to_url(string $url, string $redirect_url): string {
 }
 
 /**
+ * Authentication/login settings used by frontend CTA.
+ */
+function mst_get_login_cta_settings(): array {
+    $opts = get_option('mst_settings', []);
+    $opts = is_array($opts) ? $opts : [];
+
+    $mode = sanitize_key((string) ($opts['login_display_mode'] ?? 'url'));
+    if (!in_array($mode, ['url', 'page', 'shortcode'], true)) {
+        $mode = 'url';
+    }
+
+    return [
+        'login_display_mode' => $mode,
+        'login_url' => esc_url_raw((string) ($opts['login_url'] ?? '')),
+        'login_page_id' => absint($opts['login_page_id'] ?? 0),
+        'login_shortcode' => wp_kses_post((string) ($opts['login_shortcode'] ?? '')),
+        'login_button_text' => sanitize_text_field((string) ($opts['login_button_text'] ?? 'ورود به سایت')),
+        'login_helper_text' => sanitize_text_field((string) ($opts['login_helper_text'] ?? '')),
+    ];
+}
+
+/**
+ * Render login CTA for guest users.
+ */
+function mst_render_login_cta(): string {
+    if (is_user_logged_in()) {
+        return '';
+    }
+
+    $settings = mst_get_login_cta_settings();
+    $redirect_url = mst_current_url();
+    $target_url = '';
+    $button_text = $settings['login_button_text'] !== '' ? $settings['login_button_text'] : 'ورود به سایت';
+    $button_text = (string) apply_filters('mst_login_button_label', $button_text);
+
+    if ($settings['login_display_mode'] === 'shortcode' && $settings['login_shortcode'] !== '') {
+        $shortcode_html = do_shortcode($settings['login_shortcode']);
+        $helper_html = $settings['login_helper_text'] !== ''
+            ? '<p class="mst-login-cta__helper">' . esc_html($settings['login_helper_text']) . '</p>'
+            : '';
+
+        $html = '<div class="mst-login-cta mst-login-cta--shortcode">' . $helper_html . $shortcode_html . '</div>';
+        return (string) apply_filters('mst_login_cta_html', $html, $settings);
+    }
+
+    if ($settings['login_display_mode'] === 'page' && $settings['login_page_id'] > 0) {
+        $permalink = get_permalink($settings['login_page_id']);
+        if (is_string($permalink) && $permalink !== '') {
+            $target_url = mst_append_redirect_to_url($permalink, $redirect_url);
+        }
+    }
+
+    if ($target_url === '' && $settings['login_display_mode'] === 'url' && $settings['login_url'] !== '') {
+        $target_url = mst_append_redirect_to_url($settings['login_url'], $redirect_url);
+    }
+
+    if ($target_url === '') {
+        $target_url = wp_login_url($redirect_url);
+    }
+
+    $helper_html = $settings['login_helper_text'] !== ''
+        ? '<p class="mst-login-cta__helper">' . esc_html($settings['login_helper_text']) . '</p>'
+        : '';
+
+    $html = sprintf(
+        '<div class="mst-login-cta">%1$s<a class="mst-login-gate__btn" href="%2$s">%3$s</a></div>',
+        $helper_html,
+        esc_url($target_url),
+        esc_html($button_text)
+    );
+
+    return (string) apply_filters('mst_login_cta_html', $html, $settings);
+}
+
+/**
  * Resolve login URL for all supported site configurations.
  */
 function mst_get_login_url(string $redirect_url): string {
+    $settings = mst_get_login_cta_settings();
+    $mode = $settings['login_display_mode'];
     $redirect_url = $redirect_url !== '' ? wp_validate_redirect($redirect_url, home_url('/')) : home_url('/');
     $url = '';
+
+    if ($mode === 'page' && $settings['login_page_id'] > 0) {
+        $page_url = get_permalink($settings['login_page_id']);
+        if (is_string($page_url) && $page_url !== '') {
+            $url = $page_url;
+        }
+    }
+
+    if ($url === '' && $mode === 'url' && $settings['login_url'] !== '') {
+        $url = $settings['login_url'];
+    }
 
     if (function_exists('wc_get_page_permalink') && function_exists('wc_get_page_id')) {
         $myaccount_id = (int) wc_get_page_id('myaccount');
