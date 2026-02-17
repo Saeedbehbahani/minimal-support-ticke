@@ -706,55 +706,43 @@
   line-height: 1.6;
 }
 
-.mst-chat-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  height: 58px;
+.mst-chat-topbar {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  background: #fff;
-  border-block-end: 1px solid rgba(0, 0, 0, 0.08);
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid #eee;
+  flex-wrap: nowrap;
 }
 
-.mst-chat-header__back {
-  font-size: 13px;
-  color: rgba(15, 23, 42, 0.7);
+.mst-chat-topbar__back a {
+  text-decoration: none;
   font-weight: 500;
+  white-space: nowrap;
+}
+
+.mst-chat-topbar__close {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .mst-ticket-close {
-  font-size: 14px;
-  color: #777;
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-.mst-ticket-close:hover {
-  color: #000;
-}
-
-.mst-ticket-close strong {
-  font-weight: 700;
-}
-
-.mst-ticket-closed-badge {
-  font-size: 12px;
-  color: rgba(15, 23, 42, 0.55);
-}
-
-.mst-chat-header__title-wrap {
-  margin-inline: 0;
   display: inline-flex;
   align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
-.mst-chat-header__title {
-  font-size: 15px;
-  font-weight: 700;
-  color: #0f172a;
+.mst-chat-topbar__close .close-icon {
+  color: #E53935;
+  font-weight: bold;
+}
+
+.mst-chat-topbar__close .close-icon:hover {
+  color: #C62828;
 }
 
 .mst-chat-system-bar {
@@ -1009,7 +997,7 @@
 }
 
 .mst-app[data-mst-theme="dark"] .mst-chat-page .mst-chat,
-.mst-app[data-mst-theme="dark"] .mst-chat-header,
+.mst-app[data-mst-theme="dark"] .mst-chat-topbar,
 .mst-app[data-mst-theme="dark"] .mst-chat-page .mst-thread,
 .mst-app[data-mst-theme="dark"] .mst-composer-wrap,
 .mst-app[data-mst-theme="dark"] .mst-composer__inner {
@@ -1017,7 +1005,7 @@
   color: rgba(255, 255, 255, 0.92);
 }
 
-.mst-app[data-mst-theme="dark"] .mst-chat-header,
+.mst-app[data-mst-theme="dark"] .mst-chat-topbar,
 .mst-app[data-mst-theme="dark"] .mst-chat-system-bar,
 .mst-app[data-mst-theme="dark"] .mst-composer-wrap,
 .mst-app[data-mst-theme="dark"] .mst-composer__inner,
@@ -1036,10 +1024,8 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
-.mst-app[data-mst-theme="dark"] .mst-chat-header__title,
-.mst-app[data-mst-theme="dark"] .mst-chat-header__back,
+.mst-app[data-mst-theme="dark"] .mst-chat-topbar__back a,
 .mst-app[data-mst-theme="dark"] .mst-ticket-close,
-.mst-app[data-mst-theme="dark"] .mst-ticket-closed-badge,
 .mst-app[data-mst-theme="dark"] .mst-chat-system-bar__status,
 .mst-app[data-mst-theme="dark"] .mst-message__meta,
 .mst-app[data-mst-theme="dark"] .mst-composer__attach,

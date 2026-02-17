@@ -402,14 +402,21 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
 
     <section class="mst-chat" data-ticket-status="<?php echo esc_attr($is_closed ? 'closed' : 'open'); ?>">
 
-        <header class="mst-chat-header">
-            <a class="mst-chat-header__back" href="<?php echo esc_url($back_url); ?>">← بازگشت</a>
-            <?php if (!$is_closed): ?>
-                <a class="mst-ticket-close" href="<?php echo esc_url($close_url); ?>">پاسخم را گرفتم، بستن تیکت <strong>✕</strong></a>
-            <?php else: ?>
-                <span class="mst-ticket-closed-badge">وضعیت: بسته شده</span>
-            <?php endif; ?>
-        </header>
+        <div class="mst-chat-topbar">
+            <div class="mst-chat-topbar__back">
+                <a href="<?php echo esc_url($back_url); ?>">← بازگشت</a>
+            </div>
+            <div class="mst-chat-topbar__close">
+                <?php if (!$is_closed): ?>
+                    <a class="mst-ticket-close" href="<?php echo esc_url($close_url); ?>">
+                        <span>پاسخم را گرفتم</span>
+                        <span class="close-icon">✕</span>
+                    </a>
+                <?php else: ?>
+                    <span>پاسخم را گرفتم <span class="close-icon">✕</span></span>
+                <?php endif; ?>
+            </div>
+        </div>
 
         <div class="mst-thread" aria-live="polite">
             <?php foreach ($messages as $msg): ?>
