@@ -27,12 +27,12 @@ function mst_register_shortcodes(): void {
  * Global sticky CTA renderer (outside content/footer wrappers)
  */
 function mst_render_sticky_new_ticket_button(): void {
-    if (!mst_is_mst_page()) return;
+    if (!mst_is_support_list_page()) return;
 
     $url = mst_get_new_ticket_url();
     if (empty($url)) return;
 
-    echo '<div class="mst-sticky-wrap">';
+    echo '<div class="mst-sticky-wrap" aria-hidden="false">';
     echo '<a class="mst-sticky-new-ticket" href="' . esc_url($url) . '">';
     echo '<span class="mst-btn-inner">';
     echo '<span class="mst-btn-icon" aria-hidden="true">+</span>';
