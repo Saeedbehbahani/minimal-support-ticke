@@ -33,6 +33,7 @@ function mst_render_sticky_new_ticket_button(): void {
     $url = mst_get_new_ticket_url();
     if (empty($url)) return;
 
+    echo '<div class="mst-sticky-backdrop" aria-hidden="true"></div>';
     echo '<div class="mst-sticky-wrap" aria-hidden="false">';
     echo '<a class="mst-sticky-new-ticket" href="' . esc_url($url) . '">';
     echo '<span class="mst-btn-inner">';
