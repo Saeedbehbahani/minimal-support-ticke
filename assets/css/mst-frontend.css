@@ -28,6 +28,62 @@
   text-align: start;
   color: var(--mst-text-primary);
   background: var(--mst-bg);
+  color-scheme: light;
+  font-family: inherit;
+  isolation: isolate;
+}
+
+.mst-app,
+.mst-app * {
+  font-family: inherit;
+}
+
+.mst-app :where(
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  ul,
+  ol,
+  li,
+  dl,
+  dt,
+  dd,
+  blockquote,
+  figure,
+  form
+) {
+  margin: 0;
+  padding: 0;
+}
+
+.mst-app :where(a) {
+  color: inherit;
+  text-decoration: none;
+}
+
+.mst-app :where(button, input, select, textarea) {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+}
+
+.mst-app :where(button) {
+  border: 0;
+  margin: 0;
+}
+
+.mst-app :where(img, svg) {
+  max-inline-size: 100%;
+  block-size: auto;
+}
+
+.mst-app :where(*):focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
 }
 
 .mst-shell {
@@ -181,6 +237,7 @@
   padding-block: 12px;
   padding-inline: 16px;
   transition: background-color 0.2s ease, border-color 0.2s ease;
+  color: inherit;
 }
 
 .mst-btn--primary {
@@ -399,33 +456,59 @@
 
 .mst-bottom-bar {
   position: fixed;
-  inset-block-end: 0;
+  inset-block-end: 20px;
   inset-inline-start: 0;
   inset-inline-end: 0;
-  padding-block: 10px calc(10px + env(safe-area-inset-bottom, 0px));
-  padding-inline: 12px;
-  border-block-start: 1px solid var(--mst-divider);
-  background: var(--mst-surface);
-  box-shadow: 0 -6px 20px var(--mst-shadow-soft);
-  z-index: 80;
+  padding-block: 0;
+  padding-inline: 16px;
+  background: transparent;
+  box-shadow: none;
+  z-index: 9999;
+  pointer-events: none;
 }
 
 .mst-bottom-bar__btn {
   max-inline-size: 720px;
   margin-inline: auto;
+  pointer-events: auto;
 }
 
-.mst-ticket-list-page .mst-new-ticket-btn {
+.mst-ticket-list-page .mst-sticky-new-ticket {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  min-block-size: 52px;
+  border-radius: 14px;
+  box-shadow: 0 12px 24px var(--mst-shadow-medium);
+  color: #fff;
+  opacity: 1;
+  filter: none;
+  text-shadow: none;
 }
 
-.mst-ticket-list-page .mst-new-ticket-btn .mst-btn-icon {
-  font-size: 17px;
+.mst-ticket-list-page .mst-sticky-new-ticket .mst-btn-inner {
+  display: inline-flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.mst-ticket-list-page .mst-sticky-new-ticket .mst-btn-icon {
+  font-size: 22px;
   line-height: 1;
   font-weight: 700;
+}
+
+.mst-ticket-list-page .mst-sticky-new-ticket,
+.mst-ticket-list-page .mst-sticky-new-ticket:hover,
+.mst-ticket-list-page .mst-sticky-new-ticket:focus,
+.mst-ticket-list-page .mst-sticky-new-ticket:active,
+.mst-ticket-list-page .mst-sticky-new-ticket .mst-btn-text,
+.mst-ticket-list-page .mst-sticky-new-ticket .mst-btn-icon {
+  color: #fff;
+  opacity: 1;
+  filter: none;
 }
 
 .mst-badge {
