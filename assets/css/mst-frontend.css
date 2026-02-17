@@ -1092,6 +1092,25 @@
   line-height: 1.8;
 }
 
+
+.mst-login-cta {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+
+.mst-login-cta__helper {
+  margin: 0;
+  color: var(--mst-text-muted);
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.mst-login-cta--shortcode {
+  inline-size: 100%;
+}
+
+
 .mst-login-gate__btn {
   display: inline-flex;
   align-items: center;

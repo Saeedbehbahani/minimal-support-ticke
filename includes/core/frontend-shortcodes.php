@@ -149,18 +149,14 @@ function mst_status_icon(string $status): string {
  */
 function mst_render_login_gate(): string {
     $message = 'برای ارسال تیکت و درخواست پشتیبانی باید وارد حساب کاربری خود شوید، از دکمه زیر برای ورود استفاده کنید';
-    $label = 'ورود به سایت';
 
     $message = (string) apply_filters('mst_login_message', $message);
-    $label = (string) apply_filters('mst_login_button_label', $label);
-
-    $login_url = mst_get_login_url(mst_current_url());
+    $cta_html = mst_render_login_cta();
 
     return sprintf(
-        '<div class="mst-login-gate"><div class="mst-login-gate__inner"><p class="mst-login-gate__msg">%1$s</p><a class="mst-login-gate__btn" href="%2$s">%3$s</a></div></div>',
+        '<div class="mst-login-gate"><div class="mst-login-gate__inner"><p class="mst-login-gate__msg">%1$s</p>%2$s</div></div>',
         esc_html($message),
-        esc_url($login_url),
-        esc_html($label)
+        $cta_html
     );
 }
 
