@@ -456,25 +456,24 @@
 
 .mst-sticky-wrap{
   position: fixed !important;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 2147483000 !important;
+  left: 16px;
+  right: 16px;
+  bottom: calc(140px + env(safe-area-inset-bottom, 0px)) !important;
+  z-index: 2147483647 !important;
   pointer-events: none;
   display: flex;
   justify-content: center;
 }
 
-.mst-sticky-wrap::before{
-  content: "";
+.mst-sticky-backdrop{
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  height: calc(220px + env(safe-area-inset-bottom, 0px));
+  height: calc(160px + env(safe-area-inset-bottom, 0px));
   background: #ffffff;
+  z-index: 2147483000;
   pointer-events: none;
-  z-index: -1;
 }
 
 .mst-sticky-new-ticket{
@@ -484,7 +483,9 @@
   bottom: calc(140px + env(safe-area-inset-bottom, 0px));
   margin-inline: auto;
   pointer-events: auto;
-  width: min(calc(100% - 10px), 710px);
+  z-index: 2147483647;
+  width: 100%;
+  max-width: 520px;
   height: 52px;
   display: flex;
   align-items: center;
