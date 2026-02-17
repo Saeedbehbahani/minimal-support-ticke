@@ -372,23 +372,22 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
     <section class="mst-chat" data-ticket-status="<?php echo esc_attr($is_closed ? 'closed' : 'open'); ?>">
 
         <header class="mst-chat-header">
-            <a class="mst-chat-header__back" href="<?php echo esc_url($back_url); ?>">← بازگشت به تیکت‌ها</a>
+            <a class="mst-chat-header__back" href="<?php echo esc_url($back_url); ?>">← بازگشت</a>
 
             <div class="mst-chat-header__title-wrap">
-                <strong class="mst-chat-header__title">تیکت #<?php echo esc_html($ticket_id); ?></strong>
-                <span class="mst-chat-header__status mst-chat-header__status--<?php echo esc_attr($status); ?>">
+                <span class="mst-chat-header__status-chip mst-chat-header__status-chip--<?php echo esc_attr($status); ?>">
                     <?php echo esc_html(mst_status_label($status)); ?>
                 </span>
+                <strong class="mst-chat-header__title">تیکت #<?php echo esc_html($ticket_id); ?></strong>
             </div>
-            <span class="mst-chat-header__spacer" aria-hidden="true"></span>
         </header>
 
         <div class="mst-chat-system-bar">
-            <div class="mst-chat-system-bar__status">
+            <div class="mst-chat-system-bar__status" role="status">
                 <?php if ($is_closed): ?>
-                    تیکت بسته است
+                    Ticket closed
                 <?php else: ?>
-                    تیکت باز است
+                    Ticket open
                 <?php endif; ?>
             </div>
 
@@ -438,19 +437,25 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
                     <?php wp_nonce_field('mst_reply_ticket', '_mst_nonce'); ?>
                     <input type="hidden" name="ticket_id" value="<?php echo esc_attr($ticket_id); ?>">
 
-                    <label class="mst-composer__attach" for="mst-chat-attachments-upload" aria-label="افزودن فایل">
-                        <span aria-hidden="true">+</span>
-                    </label>
+                    <div class="mst-composer__inner">
+                        <div class="mst-composer__files" aria-live="polite"></div>
+
+                        <label class="mst-composer__attach" for="mst-chat-attachments-upload" aria-label="افزودن فایل">
+                            <span aria-hidden="true">📎</span>
+                        </label>
                     <input id="mst-chat-attachments-upload" class="mst-input-file" type="file" name="attachments[]" multiple <?php disabled($is_closed); ?>>
 
-                    <textarea name="message" class="mst-composer__input" rows="1" placeholder="پیام..." required <?php disabled($is_closed); ?>></textarea>
+                        <textarea name="message" class="mst-composer__input" rows="1" placeholder="پاسخ خود را بنویسید..." required <?php disabled($is_closed); ?>></textarea>
 
-                    <button type="submit" class="mst-composer__send" <?php disabled($is_closed); ?>>
-                        <span aria-hidden="true">➤</span>
-                        <span class="screen-reader-text">ارسال</span>
-                    </button>
+                        <button type="submit" class="mst-composer__send" <?php disabled($is_closed); ?>>
+                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path d="M12 18V6" />
+                                <path d="M7.5 10.5L12 6l4.5 4.5" />
+                            </svg>
+                            <span class="screen-reader-text">ارسال</span>
+                        </button>
+                    </div>
 
-                    <div class="mst-composer__files" aria-live="polite"></div>
                 </form>
             </div>
         </div>
@@ -465,9 +470,45 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
                 thread.scrollTop = thread.scrollHeight;
             }
 
+            var composerInput = chat.querySelector('.mst-composer__input');
+            var sendBtn = chat.querySelector('.mst-composer__send');
+            var composerForm = chat.querySelector('.mst-composer__form');
             var fileInput = chat.querySelector('#mst-chat-attachments-upload');
             var filesWrap = chat.querySelector('.mst-composer__files');
-            if (!fileInput || !filesWrap) return;
+            if (!fileInput || !filesWrap || !composerInput || !sendBtn || !composerForm) return;
+
+            var autoGrow = function () {
+                composerInput.style.height = 'auto';
+                composerInput.style.height = Math.min(composerInput.scrollHeight, 160) + 'px';
+            };
+
+            var syncSend = function () {
+                sendBtn.disabled = !composerInput.value.trim() || composerInput.disabled;
+            };
+
+            composerInput.addEventListener('input', function () {
+                autoGrow();
+                syncSend();
+            });
+
+            composerForm.addEventListener('submit', function () {
+                sendBtn.disabled = true;
+            });
+
+            autoGrow();
+            syncSend();
+
+            var removeSelectedFile = function (targetName) {
+                if (!fileInput.files || !fileInput.files.length) return;
+
+                var dt = new DataTransfer();
+                Array.prototype.forEach.call(fileInput.files, function (file) {
+                    if (file.name !== targetName) {
+                        dt.items.add(file);
+                    }
+                });
+                fileInput.files = dt.files;
+            };
 
             fileInput.addEventListener('change', function () {
                 filesWrap.innerHTML = '';
@@ -476,7 +517,12 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
                 Array.prototype.forEach.call(fileInput.files, function (file) {
                     var chip = document.createElement('span');
                     chip.className = 'mst-composer__file-chip';
-                    chip.textContent = file.name;
+                    chip.innerHTML = '<span class="mst-composer__file-chip-name"></span><button type="button" class="mst-composer__file-chip-remove" aria-label="حذف فایل">×</button>';
+                    chip.querySelector('.mst-composer__file-chip-name').textContent = file.name;
+                    chip.querySelector('.mst-composer__file-chip-remove').addEventListener('click', function () {
+                        removeSelectedFile(file.name);
+                        fileInput.dispatchEvent(new Event('change'));
+                    });
                     filesWrap.appendChild(chip);
                 });
             });
