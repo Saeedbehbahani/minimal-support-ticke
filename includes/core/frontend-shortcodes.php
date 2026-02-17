@@ -27,7 +27,7 @@ function mst_register_shortcodes(): void {
 function mst_sc_wrap_page(string $variant, string $content): string {
     $variant = sanitize_html_class($variant);
 
-    return '<mst-app class="mst-app"><mst-shell class="mst-shell"><mst-page class="mst-page mst-page--' . esc_attr($variant) . '">' . $content . '</mst-page></mst-shell></mst-app>';
+    return '<div class="mst-app" data-mst-theme="light"><div class="mst-shell"><div class="mst-page mst-page--' . esc_attr($variant) . '">' . $content . '</div></div></div>';
 }
 
 /**
@@ -313,9 +313,11 @@ function mst_render_ticket_list(string $new_url = ''): string {
     </div>
 
     <div class="mst-bottom-bar" role="region" aria-label="Create new ticket action bar">
-        <a class="mst-btn mst-btn--primary mst-btn--full mst-bottom-bar__btn mst-new-ticket-btn" href="<?php echo esc_url($new_url); ?>">
-            <span class="mst-btn-icon" aria-hidden="true">+</span>
-            <span class="mst-btn-text">ارسال درخواست جدید</span>
+        <a class="mst-btn mst-btn--primary mst-btn--full mst-bottom-bar__btn mst-sticky-new-ticket" href="<?php echo esc_url($new_url); ?>">
+            <span class="mst-btn-inner">
+                <span class="mst-btn-icon" aria-hidden="true">+</span>
+                <span class="mst-btn-text">ارسال درخواست جدید</span>
+            </span>
         </a>
     </div>
 
