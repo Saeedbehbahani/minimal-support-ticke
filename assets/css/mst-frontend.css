@@ -458,7 +458,7 @@
   position: fixed !important;
   left: 16px;
   right: 16px;
-  bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: calc(140px + env(safe-area-inset-bottom, 0px)) !important;
   z-index: 2147483647 !important;
   pointer-events: none;
 
@@ -466,8 +466,20 @@
   justify-content: center;
 }
 
+.mst-sticky-backdrop{
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(160px + env(safe-area-inset-bottom, 0px));
+  background: #ffffff;
+  z-index: 2147483000;
+  pointer-events: none;
+}
+
 .mst-sticky-new-ticket{
   pointer-events: auto;
+  z-index: 2147483647;
   width: 100%;
   max-width: 520px;
   height: 52px;
