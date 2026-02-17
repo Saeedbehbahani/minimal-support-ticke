@@ -6,6 +6,8 @@ if (!defined('ABSPATH')) exit;
  */
 function mst_register_front_handlers(): void {
 
+    mst_handle_close_ticket_action();
+
     add_action('admin_post_mst_create_ticket', 'mst_handle_create_ticket');
     add_action('admin_post_mst_reply_ticket',  'mst_handle_reply_ticket');
     add_action('admin_post_mst_toggle_status', 'mst_handle_toggle_status');
@@ -13,6 +15,44 @@ function mst_register_front_handlers(): void {
     add_action('admin_post_nopriv_mst_create_ticket', 'mst_block_nopriv');
     add_action('admin_post_nopriv_mst_reply_ticket',  'mst_block_nopriv');
     add_action('admin_post_nopriv_mst_toggle_status', 'mst_block_nopriv');
+}
+
+/**
+ * Direct close ticket action via GET query params.
+ */
+function mst_handle_close_ticket_action(): void {
+
+    if (!is_user_logged_in()) return;
+    if (sanitize_key((string) mst_req('action')) !== 'mst_close_ticket') return;
+
+    $ticket_id = absint(mst_req('ticket_id'));
+    $nonce = (string) mst_req('_wpnonce');
+    if (!$ticket_id || !wp_verify_nonce($nonce, 'mst_close_ticket_' . $ticket_id)) {
+        wp_die('Invalid request', 403);
+    }
+
+    $ticket = MST_DB::get_ticket_for_user($ticket_id, mst_user_id());
+    if (!$ticket) {
+        wp_die('Forbidden', 403);
+    }
+
+    if ((string) ($ticket['status'] ?? '') !== 'closed') {
+        global $wpdb;
+        $wpdb->update(
+            MST_DB::tickets_table(),
+            [
+                'status'     => 'closed',
+                'updated_at' => current_time('mysql'),
+            ],
+            ['id' => $ticket_id],
+            ['%s', '%s'],
+            ['%d']
+        );
+    }
+
+    $list_url = mst_get_page_url('mst_support_list_page_id', 'support');
+    wp_safe_redirect($list_url);
+    exit;
 }
 
 function mst_block_nopriv() {

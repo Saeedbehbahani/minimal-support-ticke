@@ -444,6 +444,17 @@
   block-size: 20px;
 }
 
+
+.mst-ticket-card__status-label {
+  margin-inline-start: 6px;
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.65);
+}
+
+.mst-ticket-card__status-label.is-closed {
+  color: rgba(15, 23, 42, 0.45);
+}
+
 @media (max-width: 767px) {
   .mst-ticket-list-page {
     inline-size: calc(100vw - 20px);
@@ -702,7 +713,7 @@
   height: 58px;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 10px;
   background: #fff;
   border-block-end: 1px solid rgba(0, 0, 0, 0.08);
@@ -712,6 +723,26 @@
   font-size: 13px;
   color: rgba(15, 23, 42, 0.7);
   font-weight: 500;
+}
+
+.mst-ticket-close {
+  font-size: 14px;
+  color: #777;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.mst-ticket-close:hover {
+  color: #000;
+}
+
+.mst-ticket-close strong {
+  font-weight: 700;
+}
+
+.mst-ticket-closed-badge {
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.55);
 }
 
 .mst-chat-header__title-wrap {
@@ -1007,6 +1038,8 @@
 
 .mst-app[data-mst-theme="dark"] .mst-chat-header__title,
 .mst-app[data-mst-theme="dark"] .mst-chat-header__back,
+.mst-app[data-mst-theme="dark"] .mst-ticket-close,
+.mst-app[data-mst-theme="dark"] .mst-ticket-closed-badge,
 .mst-app[data-mst-theme="dark"] .mst-chat-system-bar__status,
 .mst-app[data-mst-theme="dark"] .mst-message__meta,
 .mst-app[data-mst-theme="dark"] .mst-composer__attach,

@@ -341,6 +341,7 @@ function mst_render_ticket_list(): string {
                             </div>
                             <span class="mst-ticket-card__status" aria-label="<?php echo esc_attr(mst_status_label($status)); ?>">
                                 <?php echo mst_status_icon($status); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                <span class="mst-ticket-card__status-label <?php echo $status === 'closed' ? 'is-closed' : ''; ?>"><?php echo esc_html(mst_status_label($status)); ?></span>
                             </span>
                         </a>
                     <?php endforeach; ?>
@@ -392,6 +393,14 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
     $messages  = MST_DB::get_messages($ticket_id);
     $is_closed = ((string)($ticket['status'] ?? '') === 'closed');
     $back_url  = mst_get_page_url('mst_support_list_page_id', 'support');
+    $close_url = add_query_arg(
+        [
+            'action'    => 'mst_close_ticket',
+            'ticket_id' => $ticket_id,
+            '_wpnonce'  => wp_create_nonce('mst_close_ticket_' . $ticket_id),
+        ],
+        $back_url
+    );
 
     ob_start(); ?>
 
@@ -399,6 +408,11 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
 
         <header class="mst-chat-header">
             <a class="mst-chat-header__back" href="<?php echo esc_url($back_url); ?>">← بازگشت</a>
+            <?php if (!$is_closed): ?>
+                <a class="mst-ticket-close" href="<?php echo esc_url($close_url); ?>">پاسخم را گرفتم، بستن تیکت <strong>✕</strong></a>
+            <?php else: ?>
+                <span class="mst-ticket-closed-badge">وضعیت: بسته شده</span>
+            <?php endif; ?>
         </header>
 
         <div class="mst-thread" aria-live="polite">
