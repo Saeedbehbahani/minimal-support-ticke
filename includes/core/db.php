@@ -126,4 +126,95 @@ class MST_DB {
             ARRAY_A
         ) ?: [];
     }
+
+    /**
+     * Hard-delete ticket and all related rows/files.
+     */
+    public static function delete_ticket(int $ticket_id): bool {
+        global $wpdb;
+
+        $ticket_id = absint($ticket_id);
+        if ($ticket_id <= 0) {
+            return false;
+        }
+
+        $tickets  = self::tickets_table();
+        $messages = self::messages_table();
+
+        $ticket_exists = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM {$tickets} WHERE id=%d", $ticket_id));
+        if ($ticket_exists <= 0) {
+            return false;
+        }
+
+        $upload_basedir = wp_get_upload_dir()['basedir'] ?? '';
+        $files_to_delete = [];
+
+        $message_rows = $wpdb->get_results(
+            $wpdb->prepare("SELECT attachments FROM {$messages} WHERE ticket_id=%d", $ticket_id),
+            ARRAY_A
+        );
+
+        if (is_array($message_rows)) {
+            foreach ($message_rows as $message_row) {
+                $attachments_json = isset($message_row['attachments']) ? (string) $message_row['attachments'] : '';
+                if ($attachments_json === '') {
+                    continue;
+                }
+
+                $attachments = function_exists('mst_attachments_from_json')
+                    ? mst_attachments_from_json($attachments_json)
+                    : (json_decode($attachments_json, true) ?: []);
+
+                if (!is_array($attachments)) {
+                    continue;
+                }
+
+                foreach ($attachments as $attachment) {
+                    if (!is_array($attachment) || empty($attachment['file'])) {
+                        continue;
+                    }
+
+                    $file = wp_normalize_path((string) $attachment['file']);
+                    if ($file !== '') {
+                        $files_to_delete[] = $file;
+                    }
+                }
+            }
+        }
+
+        do_action('mst_before_ticket_delete', $ticket_id);
+
+        $wpdb->query('START TRANSACTION');
+
+        $messages_deleted = $wpdb->delete($messages, ['ticket_id' => $ticket_id], ['%d']);
+        if ($messages_deleted === false) {
+            $wpdb->query('ROLLBACK');
+            return false;
+        }
+
+        $ticket_deleted = $wpdb->delete($tickets, ['id' => $ticket_id], ['%d']);
+        if ($ticket_deleted === false || (int) $ticket_deleted === 0) {
+            $wpdb->query('ROLLBACK');
+            return false;
+        }
+
+        $wpdb->query('COMMIT');
+
+        if ($upload_basedir !== '') {
+            $uploads_prefix = trailingslashit(wp_normalize_path($upload_basedir));
+            foreach (array_unique($files_to_delete) as $file) {
+                if (strpos($file, $uploads_prefix) !== 0) {
+                    continue;
+                }
+
+                if (is_file($file) && is_writable($file)) {
+                    @unlink($file);
+                }
+            }
+        }
+
+        do_action('mst_after_ticket_delete', $ticket_id);
+
+        return true;
+    }
 }
