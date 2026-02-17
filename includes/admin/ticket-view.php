@@ -1,6 +1,39 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
+function mst_admin_safe_redirect_with_fallback(string $url, array $context = []): void {
+    if (function_exists('mst_sms_debug_log')) {
+        $last_error = error_get_last();
+        mst_sms_debug_log('Admin redirect attempt started.', [
+            'redirect_url' => $url,
+            'last_error'   => is_array($last_error) ? $last_error : null,
+            'context'      => $context,
+        ]);
+    }
+
+    if (headers_sent($file, $line)) {
+        if (function_exists('mst_sms_debug_log')) {
+            mst_sms_debug_log('Headers already sent before admin redirect; using JS fallback.', [
+                'redirect_url' => $url,
+                'headers_file' => $file,
+                'headers_line' => $line,
+                'context'      => $context,
+            ]);
+        }
+
+        echo '<script>window.location.href=' . wp_json_encode($url) . ';</script>';
+        echo '<noscript><meta http-equiv="refresh" content="0;url=' . esc_url($url) . '"></noscript>';
+        exit;
+    }
+
+    if (ob_get_length()) {
+        ob_end_clean();
+    }
+
+    wp_safe_redirect($url);
+    exit;
+}
+
 function mst_admin_render_ticket_view(): void {
     if (!mst_is_ticket_admin()) wp_die('Access denied', 403);
 
@@ -43,8 +76,10 @@ function mst_admin_render_ticket_view(): void {
                     'ticket_id' => $reply_ticket_id,
                 ]);
             }
-            wp_safe_redirect(admin_url('admin.php?page=mst_tickets'));
-            exit;
+            mst_admin_safe_redirect_with_fallback(admin_url('admin.php?page=mst_tickets'), [
+                'reason'    => 'invalid_ticket_id',
+                'ticket_id' => $reply_ticket_id,
+            ]);
         }
 
         $redirect_url = admin_url('admin.php?page=mst_ticket_view&ticket_id=' . $reply_ticket_id);
@@ -71,6 +106,7 @@ function mst_admin_render_ticket_view(): void {
                     'insert_result'   => $inserted,
                     'insert_id'       => (int) $wpdb->insert_id,
                     'db_last_error'   => $wpdb->last_error,
+                    'last_error'      => error_get_last(),
                 ]);
             }
 
@@ -106,8 +142,10 @@ function mst_admin_render_ticket_view(): void {
             ]);
         }
 
-        wp_safe_redirect($redirect_url);
-        exit;
+        mst_admin_safe_redirect_with_fallback($redirect_url, [
+            'ticket_id' => $reply_ticket_id,
+            'handler'   => 'admin_reply_submit',
+        ]);
     }
 
     // Handle status update
@@ -126,8 +164,10 @@ function mst_admin_render_ticket_view(): void {
             'updated_at' => $now,
         ], ['id' => $ticket_id]);
 
-        wp_safe_redirect(admin_url('admin.php?page=mst_ticket_view&ticket_id=' . $ticket_id));
-        exit;
+        mst_admin_safe_redirect_with_fallback(admin_url('admin.php?page=mst_ticket_view&ticket_id=' . $ticket_id), [
+            'ticket_id' => $ticket_id,
+            'handler'   => 'admin_status_submit',
+        ]);
     }
 
     $messages_rows = MST_DB::get_messages($ticket_id);
