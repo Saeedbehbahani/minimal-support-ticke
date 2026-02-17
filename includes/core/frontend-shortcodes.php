@@ -19,6 +19,27 @@ function mst_register_shortcodes(): void {
 
     // Backward compatibility
     add_shortcode('mst_support', 'mst_sc_support');
+
+    add_action('wp_footer', 'mst_render_sticky_new_ticket_button', 99);
+}
+
+/**
+ * Global sticky CTA renderer (outside content/footer wrappers)
+ */
+function mst_render_sticky_new_ticket_button(): void {
+    if (!mst_is_mst_page()) return;
+
+    $url = mst_get_new_ticket_url();
+    if (empty($url)) return;
+
+    echo '<div class="mst-sticky-wrap">';
+    echo '<a class="mst-sticky-new-ticket" href="' . esc_url($url) . '">';
+    echo '<span class="mst-btn-inner">';
+    echo '<span class="mst-btn-icon" aria-hidden="true">+</span>';
+    echo '<span class="mst-btn-text">ارسال درخواست جدید</span>';
+    echo '</span>';
+    echo '</a>';
+    echo '</div>';
 }
 
 /**
@@ -141,7 +162,7 @@ function mst_sc_support(): string {
 
     $content = ($view === 'new')
         ? mst_render_ticket_form($list_url)
-        : mst_render_ticket_list($new_url);
+        : mst_render_ticket_list();
 
     return mst_sc_wrap_page('support-' . $view, $content);
 }
@@ -249,7 +270,7 @@ function mst_sc_ticket_chat($atts = []): string {
 /**
  * Ticket list inner template
  */
-function mst_render_ticket_list(string $new_url = ''): string {
+function mst_render_ticket_list(): string {
 
     global $wpdb;
     $table   = MST_DB::tickets_table();
@@ -265,8 +286,6 @@ function mst_render_ticket_list(string $new_url = ''): string {
         ),
         ARRAY_A
     );
-
-    $new_url = $new_url ?: mst_get_page_url('mst_support_new_page_id', 'new-ticket');
 
     $chat_url = mst_get_page_url('mst_ticket_chat_page_id', 'ticket-chat');
     $current_user = wp_get_current_user();
@@ -310,15 +329,6 @@ function mst_render_ticket_list(string $new_url = ''): string {
                 </div>
             <?php endif; ?>
         </section>
-    </div>
-
-    <div class="mst-bottom-bar" role="region" aria-label="Create new ticket action bar">
-        <a class="mst-btn mst-btn--primary mst-btn--full mst-bottom-bar__btn mst-sticky-new-ticket" href="<?php echo esc_url($new_url); ?>">
-            <span class="mst-btn-inner">
-                <span class="mst-btn-icon" aria-hidden="true">+</span>
-                <span class="mst-btn-text">ارسال درخواست جدید</span>
-            </span>
-        </a>
     </div>
 
     <?php

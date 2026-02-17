@@ -152,3 +152,35 @@ function mst_get_page_url(string $key, string $fallback_slug = ''): string {
 
     return home_url('/');
 }
+
+/**
+ * Resolve "new ticket" URL
+ */
+function mst_get_new_ticket_url(): string {
+    return mst_get_page_url('mst_support_new_page_id', 'new-ticket');
+}
+
+/**
+ * Detect MST frontend pages by shortcode presence on singular pages.
+ */
+function mst_is_mst_page(): bool {
+    if (!is_singular()) return false;
+
+    $post = get_post();
+    if (!($post instanceof WP_Post)) return false;
+
+    $shortcodes = [
+        'mst_ticket_list',
+        'mst_ticket_chat',
+        'mst_ticket_form',
+        'mst_support_new',
+    ];
+
+    foreach ($shortcodes as $sc) {
+        if (has_shortcode((string) $post->post_content, $sc)) {
+            return true;
+        }
+    }
+
+    return false;
+}

@@ -454,61 +454,60 @@
   }
 }
 
-.mst-bottom-bar {
-  position: fixed;
-  inset-block-end: 20px;
-  inset-inline-start: 0;
-  inset-inline-end: 0;
-  padding-block: 0;
-  padding-inline: 16px;
-  background: transparent;
-  box-shadow: none;
-  z-index: 9999;
+.mst-sticky-wrap{
+  position: fixed !important;
+  left: 16px;
+  right: 16px;
+  bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important;
+  z-index: 2147483647 !important;
   pointer-events: none;
 }
 
-.mst-bottom-bar__btn {
-  max-inline-size: 720px;
-  margin-inline: auto;
+.mst-sticky-new-ticket{
   pointer-events: auto;
-}
-
-.mst-ticket-list-page .mst-sticky-new-ticket {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-block-size: 52px;
+  height: 52px;
   border-radius: 14px;
-  box-shadow: 0 12px 24px var(--mst-shadow-medium);
-  color: #fff;
-  opacity: 1;
-  filter: none;
-  text-shadow: none;
+  background: #0b0b0b;
+  color: #ffffff !important;
+  text-decoration: none !important;
+  opacity: 1 !important;
+  filter: none !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,.22);
 }
 
-.mst-ticket-list-page .mst-sticky-new-ticket .mst-btn-inner {
+.mst-sticky-new-ticket:hover,
+.mst-sticky-new-ticket:focus,
+.mst-sticky-new-ticket:active{
+  color: #ffffff !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+.mst-sticky-new-ticket .mst-btn-inner{
   display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  direction: rtl;
   flex-direction: row-reverse;
+}
+
+.mst-sticky-new-ticket .mst-btn-icon{
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
 }
 
-.mst-ticket-list-page .mst-sticky-new-ticket .mst-btn-icon {
-  font-size: 22px;
-  line-height: 1;
+.mst-sticky-new-ticket .mst-btn-text{
+  font-size: 14px;
   font-weight: 700;
-}
-
-.mst-ticket-list-page .mst-sticky-new-ticket,
-.mst-ticket-list-page .mst-sticky-new-ticket:hover,
-.mst-ticket-list-page .mst-sticky-new-ticket:focus,
-.mst-ticket-list-page .mst-sticky-new-ticket:active,
-.mst-ticket-list-page .mst-sticky-new-ticket .mst-btn-text,
-.mst-ticket-list-page .mst-sticky-new-ticket .mst-btn-icon {
-  color: #fff;
-  opacity: 1;
-  filter: none;
 }
 
 .mst-badge {
