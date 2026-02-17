@@ -240,22 +240,11 @@ function mst_sc_ticket_form(): string {
  */
 function mst_sc_ticket_chat($atts = []): string {
 
-    $atts = shortcode_atts([
-        'title' => 'گفتگو',
-    ], $atts);
-
-    $back_url = mst_get_page_url('mst_support_list_page_id', 'support');
-
     $ticket_id = absint(mst_req('ticket_id'));
 
     ob_start(); ?>
 
     <div class="mst-page mst-ticket-chat-page">
-        <header class="mst-chat-topbar">
-            <a class="mst-btn mst-btn--ghost mst-chat-topbar__back" href="<?php echo esc_url($back_url); ?>">← بازگشت به تیکت‌ها</a>
-            <div class="mst-chat-topbar__title"><?php echo esc_html($atts['title']); ?></div>
-        </header>
-
         <?php if (!$ticket_id): ?>
             <section class="mst-card mst-card--surface">
                 <div class="mst-alert">تیکتی انتخاب نشده.</div>
@@ -376,23 +365,44 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
     $messages  = MST_DB::get_messages($ticket_id);
     $is_closed = ((string)($ticket['status'] ?? '') === 'closed');
     $status    = sanitize_key((string) ($ticket['status'] ?? 'open'));
+    $back_url  = mst_get_page_url('mst_support_list_page_id', 'support');
 
     ob_start(); ?>
 
-    <section class="mst-card mst-card--surface mst-chat">
+    <section class="mst-chat" data-ticket-status="<?php echo esc_attr($is_closed ? 'closed' : 'open'); ?>">
 
-        <header class="mst-chat-head">
-            <div class="mst-chat-head__subject">
-                <strong>#<?php echo esc_html($ticket_id); ?></strong>
-                <?php echo esc_html($ticket['subject']); ?>
-            </div>
+        <header class="mst-chat-header">
+            <a class="mst-chat-header__back" href="<?php echo esc_url($back_url); ?>">← بازگشت به تیکت‌ها</a>
 
-            <div>
-                <span class="mst-badge mst-badge--<?php echo esc_attr($status); ?>">
+            <div class="mst-chat-header__title-wrap">
+                <strong class="mst-chat-header__title">تیکت #<?php echo esc_html($ticket_id); ?></strong>
+                <span class="mst-chat-header__status mst-chat-header__status--<?php echo esc_attr($status); ?>">
                     <?php echo esc_html(mst_status_label($status)); ?>
                 </span>
             </div>
+            <span class="mst-chat-header__spacer" aria-hidden="true"></span>
         </header>
+
+        <div class="mst-chat-system-bar">
+            <div class="mst-chat-system-bar__status">
+                <?php if ($is_closed): ?>
+                    تیکت بسته است
+                <?php else: ?>
+                    تیکت باز است
+                <?php endif; ?>
+            </div>
+
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                <input type="hidden" name="action" value="mst_toggle_status">
+                <?php wp_nonce_field('mst_toggle_status', '_mst_nonce'); ?>
+                <input type="hidden" name="ticket_id" value="<?php echo esc_attr($ticket_id); ?>">
+                <input type="hidden" name="next_status" value="<?php echo esc_attr($is_closed ? 'open' : 'closed'); ?>">
+
+                <button type="submit" class="mst-btn mst-btn--outline mst-chat-system-bar__action">
+                    <?php echo $is_closed ? 'باز کردن مجدد' : 'بستن تیکت'; ?>
+                </button>
+            </form>
+        </div>
 
         <div class="mst-thread" aria-live="polite">
             <?php foreach ($messages as $msg): ?>
@@ -400,7 +410,7 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
                     $role = sanitize_key((string) ($msg['sender_role'] ?? 'user'));
                     $timestamp = strtotime((string) ($msg['created_at'] ?? ''));
                     $datetime_label = $timestamp
-                        ? wp_date('Y/m/d - H:i', $timestamp, wp_timezone())
+                        ? wp_date('H:i', $timestamp, wp_timezone())
                         : (string) ($msg['created_at'] ?? '');
                 ?>
                 <article class="mst-message mst-chat-message--<?php echo esc_attr($role); ?>">
@@ -414,27 +424,13 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
             <?php endforeach; ?>
         </div>
 
-        <div class="mst-actions">
-            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-                <input type="hidden" name="action" value="mst_toggle_status">
-                <?php wp_nonce_field('mst_toggle_status', '_mst_nonce'); ?>
-                <input type="hidden" name="ticket_id" value="<?php echo esc_attr($ticket_id); ?>">
-                <input type="hidden" name="next_status" value="<?php echo esc_attr($is_closed ? 'open' : 'closed'); ?>">
+        <div class="mst-composer-wrap">
+            <?php if ($is_closed): ?>
+                <div class="mst-composer-wrap__notice">تیکت بسته است و امکان ارسال پیام وجود ندارد.</div>
+            <?php endif; ?>
 
-                <button type="submit" class="mst-btn mst-btn--secondary">
-                    <?php if ($is_closed): ?>
-                        باز کردن مجدد
-                    <?php else: ?>
-                        <span aria-hidden="true">✕</span>
-                        <span>بستن تیکت</span>
-                    <?php endif; ?>
-                </button>
-            </form>
-        </div>
-
-        <?php if (!$is_closed): ?>
-            <div class="mst-composer">
-                <form class="mst-form" method="post"
+            <div class="mst-composer <?php echo $is_closed ? 'mst-composer--disabled' : ''; ?>">
+                <form class="mst-composer__form" method="post"
                       action="<?php echo esc_url(admin_url('admin-post.php')); ?>"
                       enctype="multipart/form-data">
 
@@ -442,21 +438,50 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
                     <?php wp_nonce_field('mst_reply_ticket', '_mst_nonce'); ?>
                     <input type="hidden" name="ticket_id" value="<?php echo esc_attr($ticket_id); ?>">
 
-                    <label class="mst-label">پاسخ شما</label>
-                    <textarea name="message" class="mst-textarea" required rows="4"></textarea>
-
-                    <label class="mst-label">آپلود فایل</label>
-                    <label class="mst-dropzone" for="mst-chat-attachments-upload">
-                        <span class="mst-dropzone__icon">＋</span>
-                        <span class="mst-dropzone__text">افزودن تصویر / فایل</span>
-                        <span class="mst-dropzone__hint">حداکثر ۳ فایل</span>
+                    <label class="mst-composer__attach" for="mst-chat-attachments-upload" aria-label="افزودن فایل">
+                        <span aria-hidden="true">+</span>
                     </label>
-                    <input id="mst-chat-attachments-upload" class="mst-input-file" type="file" name="attachments[]" multiple>
+                    <input id="mst-chat-attachments-upload" class="mst-input-file" type="file" name="attachments[]" multiple <?php disabled($is_closed); ?>>
 
-                    <button type="submit" class="mst-btn mst-btn--primary mst-btn--full">ارسال پاسخ</button>
+                    <textarea name="message" class="mst-composer__input" rows="1" placeholder="پیام..." required <?php disabled($is_closed); ?>></textarea>
+
+                    <button type="submit" class="mst-composer__send" <?php disabled($is_closed); ?>>
+                        <span aria-hidden="true">➤</span>
+                        <span class="screen-reader-text">ارسال</span>
+                    </button>
+
+                    <div class="mst-composer__files" aria-live="polite"></div>
                 </form>
             </div>
-        <?php endif; ?>
+        </div>
+
+        <script>
+        (function () {
+            var chat = document.currentScript && document.currentScript.closest('.mst-chat');
+            if (!chat) return;
+
+            var thread = chat.querySelector('.mst-thread');
+            if (thread) {
+                thread.scrollTop = thread.scrollHeight;
+            }
+
+            var fileInput = chat.querySelector('#mst-chat-attachments-upload');
+            var filesWrap = chat.querySelector('.mst-composer__files');
+            if (!fileInput || !filesWrap) return;
+
+            fileInput.addEventListener('change', function () {
+                filesWrap.innerHTML = '';
+                if (!fileInput.files || !fileInput.files.length) return;
+
+                Array.prototype.forEach.call(fileInput.files, function (file) {
+                    var chip = document.createElement('span');
+                    chip.className = 'mst-composer__file-chip';
+                    chip.textContent = file.name;
+                    filesWrap.appendChild(chip);
+                });
+            });
+        }());
+        </script>
 
     </section>
 
