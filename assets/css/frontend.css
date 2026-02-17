@@ -144,16 +144,33 @@
 /* topbar */
 .mst-chat-topbar {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid #eee;
+  flex-wrap: nowrap;
 }
 
-.mst-chat-topbar__title {
-  color: var(--mst-text-muted);
-  font-size: 12px;
-  font-weight: 700;
+.mst-chat-topbar__back a {
+  text-decoration: none;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.mst-chat-topbar__close {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.mst-chat-topbar__close .close-icon {
+  color: #E53935;
+  font-weight: bold;
+}
+
+.mst-chat-topbar__close .close-icon:hover {
+  color: #C62828;
 }
 
 /* Ticket list */
