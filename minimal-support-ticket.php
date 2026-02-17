@@ -201,6 +201,10 @@ final class MST_Plugin {
         add_action('wp_enqueue_scripts', [$this, 'enqueue_front']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin']);
 
+        // Frontend fullscreen pages when MST shortcodes are present in content
+        add_filter('body_class', 'mst_filter_body_class_for_shortcode_pages');
+        add_action('wp_head', 'mst_print_fullscreen_footer_css', 99);
+
         // Register shortcodes + handlers
         if (function_exists('mst_register_shortcodes')) {
             add_action('init', 'mst_register_shortcodes');
@@ -231,8 +235,13 @@ final class MST_Plugin {
      * Front assets (only when shortcodes exist on current page)
      */
     public function enqueue_front() {
-        // فقط وقتی شورتکدهای تیکت روی صفحه هست، CSS/JS لود بشه
-       if (!function_exists('mst_page_has_shortcodes') || !mst_page_has_shortcodes(['mst_ticket_form','mst_ticket_list','mst_ticket_view','mst_ticket_chat','mst_support','mst_support_list','mst_support_new'])) {
+        // فقط وقتی شورتکدهای MST روی صفحه هست، CSS/JS لود بشه
+        if (!function_exists('mst_get_plugin_shortcodes') || !function_exists('mst_page_has_shortcodes')) {
+            return;
+        }
+
+        $shortcodes = mst_get_plugin_shortcodes();
+        if (empty($shortcodes) || !mst_page_has_shortcodes($shortcodes)) {
             return;
         }
 
