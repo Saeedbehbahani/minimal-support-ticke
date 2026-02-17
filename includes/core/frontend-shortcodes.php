@@ -244,7 +244,7 @@ function mst_sc_ticket_chat($atts = []): string {
 
     ob_start(); ?>
 
-    <div class="mst-page mst-ticket-chat-page">
+    <div class="mst-page mst-ticket-chat-page mst-chat-page">
         <?php if (!$ticket_id): ?>
             <section class="mst-card mst-card--surface">
                 <div class="mst-alert">تیکتی انتخاب نشده.</div>
@@ -364,7 +364,6 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
 
     $messages  = MST_DB::get_messages($ticket_id);
     $is_closed = ((string)($ticket['status'] ?? '') === 'closed');
-    $status    = sanitize_key((string) ($ticket['status'] ?? 'open'));
     $back_url  = mst_get_page_url('mst_support_list_page_id', 'support');
 
     ob_start(); ?>
@@ -375,10 +374,7 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
             <a class="mst-chat-header__back" href="<?php echo esc_url($back_url); ?>">← بازگشت</a>
 
             <div class="mst-chat-header__title-wrap">
-                <span class="mst-chat-header__status-chip mst-chat-header__status-chip--<?php echo esc_attr($status); ?>">
-                    <?php echo esc_html(mst_status_label($status)); ?>
-                </span>
-                <strong class="mst-chat-header__title">تیکت #<?php echo esc_html($ticket_id); ?></strong>
+                <strong class="mst-chat-header__title">پشتیبانی</strong>
             </div>
         </header>
 
@@ -478,8 +474,11 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
             if (!fileInput || !filesWrap || !composerInput || !sendBtn || !composerForm) return;
 
             var autoGrow = function () {
+                var maxHeight = 160;
                 composerInput.style.height = 'auto';
-                composerInput.style.height = Math.min(composerInput.scrollHeight, 160) + 'px';
+                var nextHeight = Math.min(composerInput.scrollHeight, maxHeight);
+                composerInput.style.height = nextHeight + 'px';
+                composerInput.classList.toggle('mst-composer__input--at-max', composerInput.scrollHeight > maxHeight);
             };
 
             var syncSend = function () {
