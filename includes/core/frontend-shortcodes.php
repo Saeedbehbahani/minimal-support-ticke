@@ -372,32 +372,7 @@ function mst_sc_ticket_view($atts = [], $with_wrapper = true): string {
 
         <header class="mst-chat-header">
             <a class="mst-chat-header__back" href="<?php echo esc_url($back_url); ?>">← بازگشت</a>
-
-            <div class="mst-chat-header__title-wrap">
-                <strong class="mst-chat-header__title">پشتیبانی</strong>
-            </div>
         </header>
-
-        <div class="mst-chat-system-bar">
-            <div class="mst-chat-system-bar__status" role="status">
-                <?php if ($is_closed): ?>
-                    Ticket closed
-                <?php else: ?>
-                    Ticket open
-                <?php endif; ?>
-            </div>
-
-            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-                <input type="hidden" name="action" value="mst_toggle_status">
-                <?php wp_nonce_field('mst_toggle_status', '_mst_nonce'); ?>
-                <input type="hidden" name="ticket_id" value="<?php echo esc_attr($ticket_id); ?>">
-                <input type="hidden" name="next_status" value="<?php echo esc_attr($is_closed ? 'open' : 'closed'); ?>">
-
-                <button type="submit" class="mst-btn mst-btn--outline mst-chat-system-bar__action">
-                    <?php echo $is_closed ? 'باز کردن مجدد' : 'بستن تیکت'; ?>
-                </button>
-            </form>
-        </div>
 
         <div class="mst-thread" aria-live="polite">
             <?php foreach ($messages as $msg): ?>
