@@ -70,10 +70,9 @@ class MST_SMS_Adapter_Pattern {
 
         if (function_exists('mst_sms_debug_log')) {
             mst_sms_debug_log('Kavenegar request body prepared.', [
-                'endpoint' => $endpoint,
-                'body'     => $body,
-                'pattern'  => $pattern_code,
-                'encoded'  => http_build_query($body, '', '&'),
+                'endpoint_host' => (string) wp_parse_url($endpoint, PHP_URL_HOST),
+                'body_fields'   => array_keys($body),
+                'pattern'       => $pattern_code,
             ]);
         }
 
@@ -95,7 +94,7 @@ class MST_SMS_Adapter_Pattern {
                     'error' => $response->get_error_message(),
                 ]);
             }
-            error_log('MST SMS send failed (WP_Error): ' . $response->get_error_message());
+            error_log('MST SMS send failed: WordPress HTTP request error.');
             return false;
         }
 
@@ -103,20 +102,18 @@ class MST_SMS_Adapter_Pattern {
         $res_body = (string) wp_remote_retrieve_body($response);
         $json = json_decode($res_body, true);
         $return_status = is_array($json) ? (int) ($json['return']['status'] ?? 0) : 0;
-        $return_message = is_array($json) ? (string) ($json['return']['message'] ?? '') : '';
+
 
         if (function_exists('mst_sms_debug_log')) {
             mst_sms_debug_log('Kavenegar response received.', [
-                'http_code'       => $code,
-                'raw_body'        => $res_body,
-                'return_status'   => $return_status,
-                'pattern'         => $pattern_code,
-                'return_message'  => $return_message,
+                'http_code'     => $code,
+                'return_status' => $return_status,
+                'pattern'       => $pattern_code,
             ]);
         }
 
         if ($code < 200 || $code >= 300) {
-            error_log('MST SMS send failed (HTTP ' . $code . '): ' . $res_body);
+            error_log('MST SMS send failed (HTTP ' . $code . ').');
             return false;
         }
 
@@ -126,9 +123,8 @@ class MST_SMS_Adapter_Pattern {
 
         if (function_exists('mst_sms_debug_log')) {
             mst_sms_debug_log('Kavenegar returned non-success status.', [
-                'return_status'  => $return_status,
-                'pattern'        => $pattern_code,
-                'return_message' => $return_message,
+                'return_status' => $return_status,
+                'pattern'       => $pattern_code,
             ]);
         }
 
