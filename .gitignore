@@ -2,10 +2,32 @@
 .env
 .env.*
 !.env.example
+wp-config.php
+wp-config-*.php
+
+# Credentials, certificates, and private keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+
+# Logs, backups, and database exports
 *.log
 *.sql
 *.sql.gz
+*.dump
+*.bak
+*.backup
 *.zip
+/mst-logs/
+/logs/
+
+# WordPress uploads and local runtime data
+/wp-content/uploads/
+/uploads/
+
+# Local OS and development artifacts
 .DS_Store
 Thumbs.db
 /vendor/
