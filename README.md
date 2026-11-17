@@ -1,5 +1,7 @@
 # Minimal Support Ticket
 
+[![PHP syntax](https://github.com/Saeedbehbahani/minimal-support-ticke/actions/workflows/php-lint.yml/badge.svg)](https://github.com/Saeedbehbahani/minimal-support-ticke/actions/workflows/php-lint.yml) [![License: GPL v2 or later](https://img.shields.io/badge/License-GPL%20v2%20or%20later-blue.svg)](LICENSE)
+
 A lightweight, RTL-friendly support ticket system for WordPress websites. It provides a customer-facing ticket workflow, an administrator inbox, ticket conversations, file attachments, and configurable SMS notifications through a Kavenegar-compatible pattern endpoint.
 
 **Status:** Early public release — contributions and real-world testing are welcome.
