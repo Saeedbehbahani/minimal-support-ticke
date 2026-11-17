@@ -9,20 +9,52 @@ function mst_sms_debug_enabled(): bool {
 }
 
 /**
- * Absolute path to plugin SMS log file.
+ * Store diagnostic logs in the system temporary directory, outside public uploads.
+ * The per-site directory name and restrictive permissions reduce accidental exposure.
  */
 function mst_sms_debug_log_file_path(): string {
-    $uploads = wp_upload_dir();
-    $base_dir = isset($uploads['basedir']) ? (string) $uploads['basedir'] : '';
-    if ($base_dir === '') {
+    $base_dir = function_exists('sys_get_temp_dir') ? (string) sys_get_temp_dir() : '';
+    if ($base_dir === '' || !is_dir($base_dir) || !is_writable($base_dir)) {
         return '';
     }
 
-    return trailingslashit($base_dir) . 'mst-logs/mst-sms.log';
+    $site_secret = function_exists('wp_salt') ? (string) wp_salt('auth') : (string) ABSPATH;
+    $site_key = substr(hash('sha256', $site_secret), 0, 20);
+
+    return trailingslashit($base_dir) . 'mst-private-logs-' . $site_key . '/mst-sms.log';
 }
 
 /**
- * Debug logger to uploads/mst-logs/mst-sms.log (only when sms_debug_mode is ON).
+ * Remove the legacy log previously written under public uploads.
+ * It could contain phone numbers, SMS tokens, provider responses, or an API key in its URL.
+ */
+function mst_sms_cleanup_legacy_log(): void {
+    if (!function_exists('wp_upload_dir')) {
+        return;
+    }
+
+    $uploads = wp_upload_dir();
+    $base_dir = isset($uploads['basedir']) ? (string) $uploads['basedir'] : '';
+    if ($base_dir === '') {
+        return;
+    }
+
+    $legacy_dir = trailingslashit($base_dir) . 'mst-logs';
+    $legacy_file = trailingslashit($legacy_dir) . 'mst-sms.log';
+
+    if (is_file($legacy_file) && is_writable($legacy_dir)) {
+        @unlink($legacy_file);
+    }
+
+    if (is_dir($legacy_dir)) {
+        @rmdir($legacy_dir);
+    }
+}
+
+add_action('plugins_loaded', 'mst_sms_cleanup_legacy_log', 1);
+
+/**
+ * Write sanitized diagnostics to a private temporary file (only when debug mode is ON).
  */
 function mst_sms_debug_log(string $message, array $context = []): void {
     if (!mst_sms_debug_enabled()) {
@@ -54,7 +86,15 @@ function mst_sms_debug_log(string $message, array $context = []): void {
         wp_mkdir_p($log_dir);
     }
 
-    file_put_contents($file_path, $line, FILE_APPEND | LOCK_EX);
+    if (!is_dir($log_dir) || !is_writable($log_dir)) {
+        return;
+    }
+
+    @chmod($log_dir, 0700);
+    $written = @file_put_contents($file_path, $line, FILE_APPEND | LOCK_EX);
+    if ($written !== false) {
+        @chmod($file_path, 0600);
+    }
 }
 
 /**
@@ -146,17 +186,14 @@ function mst_sms_send_pattern(string $pattern_key, string $to, array $params = [
 
     if (!$pattern_code) {
         mst_sms_debug_log('Pattern code missing for event.', [
-            'event'    => $pattern_key,
-            'receptor' => $to,
+            'event' => $pattern_key,
         ]);
         return false;
     }
 
     mst_sms_debug_log('Automatic SMS send requested.', [
-        'event'    => $pattern_key,
-        'receptor' => $to,
-        'pattern'  => $pattern_code,
-        'tokens'   => $params,
+        'event'   => $pattern_key,
+        'pattern' => $pattern_code,
     ]);
 
     try {
@@ -165,7 +202,7 @@ function mst_sms_send_pattern(string $pattern_key, string $to, array $params = [
     } catch (\Throwable $e) {
         mst_sms_debug_log('SMS send threw exception.', [
             'event'   => $pattern_key,
-            'message' => $e->getMessage(),
+            'exception' => get_class($e),
         ]);
         return false;
     }
@@ -339,9 +376,8 @@ function mst_notify_ticket_created(int $ticket_id): void {
     mst_sms_debug_log('Prepared automatic SMS payload for ticket_created_admin.', [
         'event'      => 'ticket_created_admin',
         'ticket_id'  => $ticket_id,
-        'receptors'  => $admins,
-        'pattern'    => ((array) mst_opt('sms_patterns', []))['ticket_created_admin'] ?? '',
-        'tokens'     => $params,
+        'recipient_count' => count($admins),
+        'pattern'         => ((array) mst_opt('sms_patterns', []))['ticket_created_admin'] ?? '',
     ]);
 
     $all_sent = true;
@@ -439,9 +475,8 @@ function mst_notify_admin_replied(int $ticket_id): void {
     mst_sms_debug_log('Prepared automatic SMS payload for admin_replied_user.', [
         'event'      => 'admin_replied_user',
         'ticket_id'  => $ticket_id,
-        'receptors'  => [$phone],
-        'pattern'    => ((array) mst_opt('sms_patterns', []))['admin_replied_user'] ?? '',
-        'tokens'     => $params,
+        'recipient_count' => 1,
+        'pattern'         => ((array) mst_opt('sms_patterns', []))['admin_replied_user'] ?? '',
     ]);
 
     $sent = mst_sms_send_pattern('admin_replied_user', $phone, $params);
@@ -449,13 +484,13 @@ function mst_notify_admin_replied(int $ticket_id): void {
         mst_mark_ticket_sms_sent($ticket_id, 'user_first_reply_sms_sent');
         mst_sms_debug_log('admin_replied_user SMS sent and flag updated.', [
             'ticket_id' => $ticket_id,
-            'phone'     => $phone,
+            'sms_sent'  => true,
         ]);
         return;
     }
 
     mst_sms_debug_log('admin_replied_user SMS failed. Flag left unchanged.', [
         'ticket_id' => $ticket_id,
-        'phone'     => $phone,
+        'sms_sent'  => false,
     ]);
 }
