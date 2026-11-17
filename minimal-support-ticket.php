@@ -11,7 +11,7 @@ Text Domain: minimal-support-ticket
 
 if (!defined('ABSPATH')) exit;
 
-define('MST_VERSION', '1.0.0');
+define('MST_VERSION', '1.0.1');
 define('MST_SLUG', 'minimal-support-ticket');
 define('MST_PATH', plugin_dir_path(__FILE__));
 define('MST_URL', plugin_dir_url(__FILE__));
